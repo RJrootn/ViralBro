@@ -3,7 +3,7 @@ import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-export default function LoginPage() {
+export default function LoginClient() {
   const { status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -45,7 +45,7 @@ function Left() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <BharatFlag />
           <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.01em' }}>
-            Vy<span style={{ color: '#FF9933' }}>ral</span>
+            Vyral<span style={{ color: '#FF9933' }}>Bro</span>
           </span>
           <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>
             भारत
@@ -89,7 +89,7 @@ function Left() {
               ))}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#8585A0', lineHeight: 1.5 }}>
-              <strong style={{ color: '#F2F2F8' }}>12,000+ Indian creators</strong> growing with Vyral
+              <strong style={{ color: '#F2F2F8' }}>12,000+ Indian creators</strong> growing with VyralBro
             </div>
           </div>
         </div>
@@ -100,9 +100,8 @@ function Left() {
           {['#E1306C','#FF0000','#1DA1F2','#0077B5','#1877F2','#25D366'].map(c => (
             <div key={c} style={{ width: 8, height: 8, borderRadius: '50%', background: c, boxShadow: `0 0 5px ${c}` }} />
           ))}
-          <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: '#55556A' }}>vyral.in</span>
+          <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: '#55556A' }}>vyralbro.in</span>
         </div>
-
       </div>
     </div>
   )
@@ -117,12 +116,11 @@ function Right({ error, loading, status, onGoogle }: {
   return (
     <div style={{ width: 460, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 48px', background: '#06060A', overflowY: 'auto' }}>
       <div style={{ width: '100%', maxWidth: 340 }}>
-
         <h2 style={{ fontWeight: 700, fontSize: '1.75rem', letterSpacing: '-0.02em', color: '#F2F2F8', marginBottom: 6 }}>
           Welcome back
         </h2>
         <p style={{ fontSize: '0.82rem', color: '#8585A0', marginBottom: 28, lineHeight: 1.5 }}>
-          Sign in to your Vyral workspace
+          Sign in to your VyralBro workspace
         </p>
 
         {error && (
@@ -131,7 +129,6 @@ function Right({ error, loading, status, onGoogle }: {
           </div>
         )}
 
-        {/* Google button */}
         <button
           onClick={onGoogle}
           disabled={loading || status === 'loading'}
@@ -144,14 +141,8 @@ function Right({ error, loading, status, onGoogle }: {
             opacity: loading ? 0.7 : 1, transition: 'all 0.2s',
             fontFamily: 'inherit',
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = '#FF9933'
-            e.currentTarget.style.boxShadow = '0 4px 20px rgba(255,153,51,0.14)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.11)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF9933'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(255,153,51,0.14)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.11)'; e.currentTarget.style.boxShadow = 'none' }}
         >
           {loading
             ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,153,51,0.3)', borderTopColor: '#FF9933', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
@@ -167,10 +158,8 @@ function Right({ error, loading, status, onGoogle }: {
         </div>
 
         <div style={{ padding: '14px 16px', borderRadius: 12, background: '#111118', border: '1px solid rgba(255,255,255,0.06)', fontSize: '0.78rem', color: '#55556A', lineHeight: 1.6 }}>
-          <div style={{ color: '#FF9933', fontWeight: 600, marginBottom: 4, fontSize: '0.72rem' }}>
-            First time here?
-          </div>
-          Signing in with Google automatically creates your Vyral workspace and gives you 50 free AI credits.
+          <div style={{ color: '#FF9933', fontWeight: 600, marginBottom: 4, fontSize: '0.72rem' }}>First time here?</div>
+          Signing in with Google automatically creates your VyralBro workspace and gives you 50 free AI credits.
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.68rem', color: '#55556A', marginTop: 22, lineHeight: 1.7 }}>
@@ -178,9 +167,8 @@ function Right({ error, loading, status, onGoogle }: {
           <a href="/terms" style={{ color: '#8585A0', textDecoration: 'none' }}>Terms</a>
           {' '}and{' '}
           <a href="/privacy" style={{ color: '#8585A0', textDecoration: 'none' }}>Privacy Policy</a>.<br />
-          Built with love in Bharat
+          Built with love in Bharat 🇮🇳
         </p>
-
       </div>
     </div>
   )
@@ -188,26 +176,19 @@ function Right({ error, loading, status, onGoogle }: {
 
 function BharatFlag() {
   return (
-    <div style={{ width: 32, height: 22, borderRadius: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 10px rgba(0,0,0,0.5)', flexShrink: 0 }}>
-      <div style={{ flex: 1, background: '#FF9933' }} />
-      <div style={{ flex: 1, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#000080" strokeWidth="1.5"/>
-          <circle cx="12" cy="12" r="2.5" fill="#000080"/>
-          <g stroke="#000080" strokeWidth="0.7">
-            <line x1="12" y1="2" x2="12" y2="5.5"/>
-            <line x1="12" y1="18.5" x2="12" y2="22"/>
-            <line x1="2" y1="12" x2="5.5" y2="12"/>
-            <line x1="18.5" y1="12" x2="22" y2="12"/>
-            <line x1="4.34" y1="4.34" x2="6.82" y2="6.82"/>
-            <line x1="17.18" y1="17.18" x2="19.66" y2="19.66"/>
-            <line x1="19.66" y1="4.34" x2="17.18" y2="6.82"/>
-            <line x1="6.82" y1="17.18" x2="4.34" y2="19.66"/>
-          </g>
-        </svg>
-      </div>
-      <div style={{ flex: 1, background: '#138808' }} />
-    </div>
+    <svg width="30" height="21" viewBox="0 0 30 21" style={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.5)', flexShrink: 0, display: 'block' }}>
+      <rect x="0" y="0" width="30" height="7" fill="#FF9933" />
+      <rect x="0" y="7" width="30" height="7" fill="#FFFFFF" />
+      <rect x="0" y="14" width="30" height="7" fill="#138808" />
+      <circle cx="15" cy="10.5" r="3" fill="none" stroke="#000080" strokeWidth="0.6" />
+      <circle cx="15" cy="10.5" r="0.8" fill="#000080" />
+      <g stroke="#000080" strokeWidth="0.4">
+        <line x1="15" y1="7.5" x2="15" y2="8.8" /><line x1="15" y1="12.2" x2="15" y2="13.5" />
+        <line x1="12" y1="10.5" x2="13.3" y2="10.5" /><line x1="16.7" y1="10.5" x2="18" y2="10.5" />
+        <line x1="12.88" y1="8.38" x2="13.8" y2="9.3" /><line x1="16.2" y1="11.7" x2="17.12" y2="12.62" />
+        <line x1="17.12" y1="8.38" x2="16.2" y2="9.3" /><line x1="13.8" y1="11.7" x2="12.88" y2="12.62" />
+      </g>
+    </svg>
   )
 }
 

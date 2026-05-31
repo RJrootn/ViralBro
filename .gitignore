@@ -59,3 +59,6 @@ yarn-error.log*
 dist/
 node_modules/
 node_modules/
+
+# Local Netlify folder
+.netlify
