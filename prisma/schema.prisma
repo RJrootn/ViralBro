@@ -1,0 +1,330 @@
+// prisma/schema.prisma
+// Vyral — Full Database Schema
+// DB: PostgreSQL via Supabase / Neon / Railway
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Needed for Supabase connection pooling
+}
+
+// ─────────────────────────────────────────
+// AUTH  (NextAuth.js + Prisma Adapter)
+// ─────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─────────────────────────────────────────
+// USER & WORKSPACE
+// ─────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Profile
+  username      String?   @unique
+  bio           String?   @db.Text
+  website       String?
+  location      String?   // e.g. "Mumbai, Maharashtra"
+  language      String    @default("en") // preferred language
+  timezone      String    @default("Asia/Kolkata")
+
+  // Subscription
+  plan          Plan      @default(FREE)
+  planExpiresAt DateTime?
+  razorpayCustomerId String?
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  workspace     Workspace?
+  payments      Payment[]
+  aiCredits     AiCredit[]
+}
+
+enum Plan {
+  FREE
+  CREATOR    // ₹799/mo
+  PRO        // ₹1999/mo
+  AGENCY     // ₹4999/mo
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  name        String
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialAccounts   SocialAccount[]
+  posts            Post[]
+  analytics        Analytics[]
+  contentTemplates ContentTemplate[]
+  aiUsages         AiUsage[]
+}
+
+// ─────────────────────────────────────────
+// SOCIAL ACCOUNTS (OAuth connections)
+// ─────────────────────────────────────────
+
+model SocialAccount {
+  id          String         @id @default(cuid())
+  workspaceId String
+  platform    SocialPlatform
+  platformUserId   String
+  platformUsername String
+  displayName      String?
+  avatarUrl        String?
+  accessToken      String   @db.Text
+  refreshToken     String?  @db.Text
+  tokenExpiresAt   DateTime?
+  scopes           String[] // granted OAuth scopes
+  isActive         Boolean  @default(true)
+  connectedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  postPlatforms PostPlatform[]
+
+  @@unique([workspaceId, platform])
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  TWITTER
+  LINKEDIN
+  YOUTUBE
+  FACEBOOK
+  WHATSAPP
+}
+
+// ─────────────────────────────────────────
+// POSTS & CONTENT
+// ─────────────────────────────────────────
+
+model Post {
+  id          String     @id @default(cuid())
+  workspaceId String
+  title       String?    // internal label
+  rawContent  String     @db.Text  // original idea/draft
+  tone        String     @default("authentic")
+  format      String     @default("listicle")
+  language    String     @default("en")
+  mediaUrls   String[]   // uploaded images/videos
+  status      PostStatus @default(DRAFT)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platforms     PostPlatform[]
+  analytics     Analytics[]
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+// Per-platform adapted content
+model PostPlatform {
+  id              String         @id @default(cuid())
+  postId          String
+  socialAccountId String
+  platform        SocialPlatform
+  adaptedText     String         @db.Text
+  hashtags        String[]
+  mediaUrls       String[]       // platform-specific media
+  platformPostId  String?        // ID returned by the platform after publish
+  status          PostStatus     @default(DRAFT)
+  errorMessage    String?
+  publishedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id])
+  analytics     Analytics[]
+
+  @@unique([postId, platform])
+}
+
+// ─────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────
+
+model Analytics {
+  id              String         @id @default(cuid())
+  workspaceId     String
+  postId          String?
+  postPlatformId  String?
+  platform        SocialPlatform
+  date            DateTime       @db.Date   // day-level rollup
+  reach           Int            @default(0)
+  impressions     Int            @default(0)
+  likes           Int            @default(0)
+  comments        Int            @default(0)
+  shares          Int            @default(0)
+  saves           Int            @default(0)
+  clicks          Int            @default(0)
+  videoViews      Int            @default(0)
+  profileVisits   Int            @default(0)
+  followerGained  Int            @default(0)
+  engagementRate  Float          @default(0)
+  rawData         Json?          // raw API response stored for future re-processing
+  fetchedAt       DateTime       @default(now())
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  post         Post?         @relation(fields: [postId], references: [id])
+  postPlatform PostPlatform? @relation(fields: [postPlatformId], references: [id])
+
+  @@unique([workspaceId, postPlatformId, date])
+  @@index([workspaceId, platform, date])
+  @@index([postId])
+}
+
+// ─────────────────────────────────────────
+// AI USAGE & CREDITS
+// ─────────────────────────────────────────
+
+model AiUsage {
+  id          String   @id @default(cuid())
+  workspaceId String
+  action      String   // "generate_content" | "translate" | "hashtags" | "insights"
+  inputTokens Int
+  outputTokens Int
+  creditsUsed Int      @default(1)
+  model       String   @default("claude-sonnet-4-20250514")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model AiCredit {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int      // positive = top-up, negative = usage
+  reason    String   // "plan_monthly" | "purchased" | "used"
+  balance   Int      // running balance after this transaction
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────
+// CONTENT TEMPLATES
+// ─────────────────────────────────────────
+
+model ContentTemplate {
+  id          String         @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  platform    SocialPlatform?
+  tone        String?
+  format      String?
+  promptHint  String         @db.Text
+  isPublic    Boolean        @default(false)
+  usageCount  Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────
+// PAYMENTS (Razorpay)
+// ─────────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(cuid())
+  userId            String
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  amount            Int           // in paise (₹799 = 79900)
+  currency          String        @default("INR")
+  plan              Plan
+  status            PaymentStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+// ─────────────────────────────────────────
+// SCHEDULED JOBS TRACKING
+// ─────────────────────────────────────────
+
+model ScheduledJob {
+  id          String    @id @default(cuid())
+  postId      String
+  platform    SocialPlatform
+  bullJobId   String    @unique  // BullMQ job ID
+  scheduledAt DateTime
+  status      String    @default("queued") // queued | running | done | failed
+  attempts    Int       @default(0)
+  lastError   String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([postId])
+  @@index([scheduledAt])
+}

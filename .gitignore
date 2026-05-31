@@ -1,0 +1,60 @@
+# ─── Dependencies ────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Next.js ─────────────────────────────────────────────────
+.next/
+out/
+build/
+
+# ─── Environment (NEVER commit these) ────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# ─── Prisma ──────────────────────────────────────────────────
+# Keep schema.prisma in git, never the generated client
+prisma/migrations/dev.db
+prisma/migrations/dev.db-journal
+
+# ─── Testing ─────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.test.js.snap
+
+# ─── OS ──────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# ─── Editor ──────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+
+# ─── Logs ────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── Misc ────────────────────────────────────────────────────
+.vercel
+.turbo
+*.tgz
+*.zip
+dist/
+node_modules/
