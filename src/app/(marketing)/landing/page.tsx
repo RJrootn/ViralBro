@@ -30,7 +30,7 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#FF9933 33.33%,#fff 33.33% 66.66%,#138808 66.66%)' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
-          <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>Vy<span style={{ color: '#FF9933' }}>ral</span></span>
+          <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>VyralBro</span>
           <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>भारत</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -93,7 +93,7 @@ export default function LandingPage() {
           </form>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(19,136,8,0.1)', border: '1px solid rgba(19,136,8,0.3)', borderRadius: 12, padding: '14px 24px', marginBottom: 20, fontSize: '0.92rem', color: '#25D366', fontWeight: 600 }}>
-            ✓ You're on the list! We'll reach out when Vyral goes live.
+            ✓ You're on the list! We'll reach out when VyralBro goes live.
           </div>
         )}
 
@@ -168,12 +168,12 @@ export default function LandingPage() {
       {/* FEATURES */}
       <section style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Why Vyral</div>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Why VyralBro</div>
           <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
             Built different.<br /><span style={{ color: '#FF9933' }}>Built for Bharat.</span>
           </h2>
           <p style={{ fontSize: '1rem', color: '#8585A0', lineHeight: 1.7, maxWidth: 520, margin: '0 auto' }}>
-            Every other social media tool was built for the US market. Vyral is built from the ground up for Indian creators.
+            Every other social media tool was built for the US market. VyralBro is built from the ground up for Indian creators.
           </p>
         </div>
 
@@ -188,7 +188,7 @@ export default function LandingPage() {
             {
               icon: '🚀',
               title: 'One post, 6 platforms',
-              desc: 'Write your idea once. Vyral adapts the length, tone, format, and hashtags for Instagram, YouTube, LinkedIn, Twitter, Facebook, and WhatsApp automatically.',
+              desc: 'Write your idea once. VyralBro adapts the length, tone, format, and hashtags for Instagram, YouTube, LinkedIn, Twitter, Facebook, and WhatsApp automatically.',
               color: '#8B5CF6',
             },
             {
@@ -200,7 +200,7 @@ export default function LandingPage() {
             {
               icon: '💬',
               title: 'WhatsApp as a channel',
-              desc: 'WhatsApp Broadcast is India\'s highest open-rate channel. Vyral treats it as a first-class publishing platform, not an afterthought.',
+              desc: 'WhatsApp Broadcast is India\'s highest open-rate channel. VyralBro treats it as a first-class publishing platform, not an afterthought.',
               color: '#25D366',
             },
             {
@@ -254,12 +254,12 @@ export default function LandingPage() {
       {/* SOCIAL PROOF */}
       <section style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Creators love Vyral</div>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Creators love VyralBro</div>
           <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em' }}>From Mumbai to Manipur 🇮🇳</h2>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
           {[
-            { name: 'Priya Sharma', handle: '@priyacreates', location: 'Mumbai', followers: '2.1L followers', quote: 'I used to spend 3 hours every day reformatting content for each platform. Vyral does it in 10 seconds. Game changer for Indian creators.', color: '#E1306C' },
+            { name: 'Priya Sharma', handle: '@priyacreates', location: 'Mumbai', followers: '2.1L followers', quote: 'I used to spend 3 hours every day reformatting content for each platform. VyralBro does it in 10 seconds. Game changer for Indian creators.', color: '#E1306C' },
             { name: 'Arjun Mehta', handle: '@arjunbuilds', location: 'Bengaluru', followers: '89K followers', quote: 'The Hindi and Kannada adaptation is spot on. My regional content now gets 3x more engagement because it actually sounds natural.', color: '#FF9933' },
             { name: 'Kavya Reddy', handle: '@kavyatalks', location: 'Hyderabad', followers: '1.4L followers', quote: 'WhatsApp broadcast + Instagram + YouTube all in one dashboard. Finally a tool that understands how Indian creators actually work.', color: '#8B5CF6' },
           ].map(t => (
@@ -328,7 +328,7 @@ export default function LandingPage() {
             India's Creator OS<br />is here.
           </h2>
           <p style={{ fontSize: '1rem', color: '#8585A0', lineHeight: 1.7, marginBottom: 40 }}>
-            Join 12,000+ Indian creators who are growing faster with Vyral. Free to start. No credit card required.
+            Join 12,000+ Indian creators who are growing faster with VyralBro. Free to start. No credit card required.
           </p>
           {!submitted ? (
             <form onSubmit={handleWaitlist} style={{ display: 'flex', gap: 10, maxWidth: 440, margin: '0 auto 16px' }}>
@@ -345,7 +345,7 @@ export default function LandingPage() {
               ✓ You're on the list!
             </div>
           )}
-          <p style={{ fontSize: '0.72rem', color: '#55556A' }}>Built with ❤️ in Bharat · vyral.in</p>
+          <p style={{ fontSize: '0.72rem', color: '#55556A' }}>Built with ❤️ in Bharat · vyralbro.in</p>
         </div>
       </section>
 
@@ -353,7 +353,7 @@ export default function LandingPage() {
       <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 5%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
-          <span style={{ fontWeight: 900, fontSize: '1rem' }}>Vy<span style={{ color: '#FF9933' }}>ral</span></span>
+          <span style={{ fontWeight: 900, fontSize: '1rem' }}>VyralBro</span>
           <span style={{ fontSize: '0.72rem', color: '#55556A' }}>· India's Creator OS</span>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
@@ -365,7 +365,7 @@ export default function LandingPage() {
             </span>
           ))}
         </div>
-        <div style={{ fontSize: '0.72rem', color: '#55556A' }}>© 2025 Vyral · Made in Bharat 🇮🇳</div>
+        <div style={{ fontSize: '0.72rem', color: '#55556A' }}>© 2025 VyralBro · Made in Bharat 🇮🇳</div>
       </footer>
     </div>
   )

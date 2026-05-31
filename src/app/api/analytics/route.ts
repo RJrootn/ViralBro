@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 // src/app/api/analytics/route.ts
 // GET /api/analytics — aggregated analytics for the workspace
 
@@ -71,3 +72,4 @@ export const GET = withErrorHandler(async (req) => {
     postCount,
   })
 })
+

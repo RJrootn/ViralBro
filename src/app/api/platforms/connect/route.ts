@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 // src/app/api/platforms/connect/route.ts
 // POST /api/platforms/connect — save OAuth tokens after platform OAuth flow
 
@@ -78,3 +79,4 @@ export const GET = withErrorHandler(async () => {
 
   return ok({ accounts })
 })
+

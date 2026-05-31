@@ -1,24 +1,13 @@
-// src/app/api/payments/create-order/route.ts
-// POST /api/payments/create-order — create Razorpay order for plan upgrade
-
-import Razorpay                  from 'razorpay'
-import { z }                     from 'zod'
+import { z } from 'zod'
 import { withErrorHandler, ok, err } from '@/lib/api'
-import { requireSession }        from '@/lib/auth/session'
-import { db }                    from '@/lib/db/client'
-import type { Plan }             from '@prisma/client'
+import { requireSession } from '@/lib/auth/session'
+import { db } from '@/lib/db/client'
+import type { Plan } from '@prisma/client'
 
-const razorpay = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-})
-
-// Plan prices in paise (INR × 100)
-const PLAN_PRICES: Record<Plan, number> = {
-  FREE:    0,
-  CREATOR: 79900,   // ₹799/mo
-  PRO:     199900,  // ₹1999/mo
-  AGENCY:  499900,  // ₹4999/mo
+const PLAN_PRICES: Record<string, number> = {
+  CREATOR: 79900,
+  PRO:     199900,
+  AGENCY:  499900,
 }
 
 const schema = z.object({
@@ -28,35 +17,31 @@ const schema = z.object({
 export const POST = withErrorHandler(async (req) => {
   const session = await requireSession()
   const { plan } = schema.parse(await req.json())
+  const amount = PLAN_PRICES[plan]
+  if (!amount) return err('Invalid plan', 400)
 
-  const amount = PLAN_PRICES[plan as Plan]
-  if (!amount) return err('Invalid plan selected', 400)
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    return err('Payments not configured yet', 503)
+  }
 
-  const order = await razorpay.orders.create({
-    amount,
-    currency: 'INR',
-    notes: {
-      userId: session.user.id,
-      plan,
-    },
+  const Razorpay = (await import('razorpay')).default
+  const razorpay = new Razorpay({
+    key_id:     process.env.RAZORPAY_KEY_ID!,
+    key_secret: process.env.RAZORPAY_KEY_SECRET!,
   })
 
-  // Record pending payment
+  const order = await razorpay.orders.create({ amount, currency: 'INR' })
+
   await db.payment.create({
     data: {
-      userId:           session.user.id,
-      razorpayOrderId:  order.id,
+      userId:          session.user.id,
+      razorpayOrderId: order.id,
       amount,
-      currency:         'INR',
-      plan:             plan as Plan,
-      status:           'PENDING',
+      currency:        'INR',
+      plan:            plan as Plan,
+      status:          'PENDING',
     },
   })
 
-  return ok({
-    orderId:    order.id,
-    amount,
-    currency:   'INR',
-    keyId:      process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-  })
+  return ok({ orderId: order.id, amount, currency: 'INR' })
 })
