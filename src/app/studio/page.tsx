@@ -1,7 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+
+const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
 const PC: Record<string, string> = {
   instagram: '#E1306C', twitter: '#1DA1F2', linkedin: '#0077B5',
@@ -44,6 +46,14 @@ export default function StudioPage() {
   const [saved, setSaved] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
+  const [langIdx, setLangIdx] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLangIdx(i => (i + 1) % LANGUAGES.length)
+    }, 1800)
+    return () => clearInterval(interval)
+  }, [])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -115,8 +125,10 @@ export default function StudioPage() {
         <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BharatFlag />
-            <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>Vy<span style={{ color: '#FF9933' }}>ral</span></span>
-            <span style={{ fontSize: '0.58rem', fontWeight: 700, background: 'linear-gradient(135deg,#FF9933,#FF6B00)', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>Pro</span>
+            <span style={{ fontWeight: 900, fontSize: '1.1rem' }}>Vyral<span style={{ color: '#FF9933' }}>Bro</span></span>
+            <span style={{ fontSize: '0.58rem', fontWeight: 700, background: 'rgba(37,211,102,0.1)', color: '#25D366', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 20, padding: '2px 7px', minWidth: 36, textAlign: 'center' as const, transition: 'all 0.4s' }}>
+              {LANGUAGES[langIdx]}
+            </span>
           </div>
         </div>
         <div style={{ padding: '8px 0', flex: 1 }}>
