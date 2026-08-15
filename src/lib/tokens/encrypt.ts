@@ -2,6 +2,7 @@
 // AES-256-GCM encryption for OAuth tokens at rest in PostgreSQL
 // Tokens are sensitive — never store plaintext in DB
 
+
 import crypto from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'

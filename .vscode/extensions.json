@@ -7,6 +7,7 @@
     "ms-azuretools.vscode-docker",
     "GitHub.copilot",
     "formulahendry.auto-rename-tag",
-    "christian-kohler.path-intellisense"
+    "christian-kohler.path-intellisense",
+    "anthropic.claude-code"
   ]
 }
