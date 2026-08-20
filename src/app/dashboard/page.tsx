@@ -10,17 +10,37 @@ const PC: Record<string, string> = {
 
 const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
+interface ConnectedAccount {
+  id: string
+  platform: string
+  platformUsername: string
+}
+
+const PLATFORM_LABEL: Record<string, string> = {
+  YOUTUBE: 'YouTube', INSTAGRAM: 'Instagram', TWITTER: 'X/Twitter', LINKEDIN: 'LinkedIn', FACEBOOK: 'Facebook', WHATSAPP: 'WhatsApp',
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [activePage, setActivePage] = useState('dashboard')
   const [langIdx, setLangIdx] = useState(0)
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
 
   useEffect(() => {
     const interval = setInterval(() => {
       setLangIdx(i => (i + 1) % LANGUAGES.length)
     }, 1800)
     return () => clearInterval(interval)
+  }, [])
+
+  // Real connected accounts, not the hardcoded fake follower counts this used
+  // to show unconditionally.
+  useEffect(() => {
+    fetch('/api/platforms/connect')
+      .then(res => res.json())
+      .then(data => { if (data.success) setAccounts(data.data.accounts) })
+      .catch(() => {})
   }, [])
 
   const nav = (page: string) => {
@@ -57,21 +77,18 @@ export default function DashboardPage() {
         </div>
         <div style={{ padding: '12px 12px 8px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 'auto' }}>
           <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#5A5A72', marginBottom: 10 }}>Connected Channels</div>
-          {[
-            { name: 'YouTube',   count: '2.1M', color: '#FF0000' },
-            { name: 'Instagram', count: '8.4L', color: '#E1306C' },
-            { name: 'X/Twitter', count: '1.2L', color: '#1DA1F2' },
-            { name: 'LinkedIn',  count: '34K',  color: '#0077B5' },
-            { name: 'WhatsApp',  count: '8.2K', color: '#25D366' },
-          ].map(ch => (
-            <div key={ch.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: ch.color, boxShadow: `0 0 5px ${ch.color}`, flexShrink: 0 }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 500, flex: 1 }}>{ch.name}</span>
-              <span style={{ fontSize: '0.72rem', color: '#7A7A90' }}>{ch.count}</span>
+          {accounts.length === 0 && (
+            <div style={{ fontSize: '0.72rem', color: '#5A5A72', marginBottom: 8 }}>None connected yet</div>
+          )}
+          {accounts.map(ch => (
+            <div key={ch.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: PC[ch.platform.toLowerCase()] ?? '#7A7A90', boxShadow: `0 0 5px ${PC[ch.platform.toLowerCase()] ?? '#7A7A90'}`, flexShrink: 0 }} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 500, flex: 1 }}>{PLATFORM_LABEL[ch.platform] ?? ch.platform}</span>
+              <span style={{ fontSize: '0.72rem', color: '#7A7A90' }}>@{ch.platformUsername}</span>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399' }} />
             </div>
           ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', marginTop: 6, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 9, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#5A5A72' }}
+          <div onClick={() => router.push('/settings')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', marginTop: 6, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 9, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#5A5A72' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF9933'; e.currentTarget.style.color = '#FF9933' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#5A5A72' }}>
             + Add Channel
@@ -107,6 +124,13 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px' }}>
+          {/* Analytics ingestion (per-platform metrics fetch) isn't built yet — see
+              src/lib/queue/worker.ts's analyticsWorker, which is plumbing-only.
+              Showing these as real numbers to a logged-in user would be misleading,
+              so it's labeled until that pipeline exists. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.25)', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: '0.75rem', color: '#FF9933', fontWeight: 600 }}>
+            ✦ Sample data — connect your accounts and publish a few posts to see real analytics here
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
             {[
               { label: 'Total Reach',     val: '3.09M', delta: '↑ 18.4% vs last month', up: true,  icon: '📡', color: '#FF9933' },

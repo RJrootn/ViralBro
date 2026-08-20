@@ -2,12 +2,13 @@
 // GET /api/posts  — list posts
 // POST /api/posts — create post
 
-import { z }                          from 'zod'
-import { withErrorHandler, ok }       from '@/lib/api'
-import { requireWorkspace }           from '@/lib/auth/session'
-import { db }                         from '@/lib/db/client'
-import { schedulePost, publishNow }   from '@/lib/queue'
-import type { SocialPlatform }        from '@prisma/client'
+import { z }                              from 'zod'
+import { startOfMonth }                   from 'date-fns'
+import { withErrorHandler, ok, err, PLAN_LIMITS } from '@/lib/api'
+import { requireWorkspace }               from '@/lib/auth/session'
+import { db }                             from '@/lib/db/client'
+import { schedulePost, publishNow }       from '@/lib/queue'
+import type { SocialPlatform }            from '@prisma/client'
 
 // ── GET: list posts ───────────────────────────────────────────────────────
 export const GET = withErrorHandler(async (req) => {
@@ -62,8 +63,33 @@ const createSchema = z.object({
 })
 
 export const POST = withErrorHandler(async (req) => {
-  const { workspace } = await requireWorkspace()
+  const { session, workspace } = await requireWorkspace()
   const body = createSchema.parse(await req.json())
+
+  // ── Plan limits ──────────────────────────────────────────────────────────
+  // Previously nothing enforced these — a Free-plan user could post
+  // unlimited times to all 6 platforms even though pricing promises otherwise.
+  const limits = PLAN_LIMITS[session.user.plan as keyof typeof PLAN_LIMITS] ?? PLAN_LIMITS.FREE
+
+  const requestedPlatforms = new Set(body.platforms.map(p => p.platform)).size
+  if (requestedPlatforms > limits.platforms) {
+    return err(
+      `Your plan allows up to ${limits.platforms} platform(s) per post — this request targets ${requestedPlatforms}. Upgrade to publish to more.`,
+      402,
+    )
+  }
+
+  if (limits.postsPerMonth !== -1) {
+    const postsThisMonth = await db.post.count({
+      where: { workspaceId: workspace.id, createdAt: { gte: startOfMonth(new Date()) } },
+    })
+    if (postsThisMonth >= limits.postsPerMonth) {
+      return err(
+        `You've hit your plan's ${limits.postsPerMonth} posts/month limit. Upgrade to keep publishing this month.`,
+        402,
+      )
+    }
+  }
 
   const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null
   const status      = body.publishNow ? 'PUBLISHING' : scheduledAt ? 'SCHEDULED' : 'DRAFT'

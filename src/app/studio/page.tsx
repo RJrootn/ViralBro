@@ -26,10 +26,30 @@ const PM: Record<string, number> = {
   youtube: 5000, facebook: 63206, whatsapp: 1000,
 }
 
+// The language pills show a display label ("🇮🇳 English", "हि Hindi") but
+// /lib/ai/generate.ts only special-cases the literal code 'en' for its
+// English-purity instructions — anything else is passed straight through as
+// "write entirely in {language}". Map the label to the code/name the
+// backend actually expects.
+const LANG_CODE: Record<string, string> = {
+  '🇮🇳 English': 'en',
+  'हि Hindi': 'Hindi',
+  'த Tamil': 'Tamil',
+  'ಕ Kannada': 'Kannada',
+  'తె Telugu': 'Telugu',
+  'বাং Bengali': 'Bengali',
+  'मर Marathi': 'Marathi',
+}
+
 interface PlatformOutput {
   text: string
   hashtags: string[]
   tip: string
+}
+
+interface ConnectedAccount {
+  id: string
+  platform: string // uppercase, e.g. 'INSTAGRAM'
 }
 
 export default function StudioPage() {
@@ -47,6 +67,7 @@ export default function StudioPage() {
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
   const [langIdx, setLangIdx] = useState(0)
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,6 +75,19 @@ export default function StudioPage() {
     }, 1800)
     return () => clearInterval(interval)
   }, [])
+
+  // Which platforms actually have a connected social account — Save Draft
+  // and Publish All can only act on these (the API requires a socialAccountId
+  // per platform). Content generation itself doesn't need a connection.
+  useEffect(() => {
+    fetch('/api/platforms/connect')
+      .then(res => res.json())
+      .then(data => { if (data.success) setAccounts(data.data.accounts) })
+      .catch(() => {})
+  }, [])
+
+  const accountFor = (platformKey: string) =>
+    accounts.find(a => a.platform === platformKey.toUpperCase())
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -79,7 +113,7 @@ export default function StudioPage() {
           rawContent: raw,
           tone,
           format,
-          language,
+          language: LANG_CODE[language] ?? language,
           platforms: platforms.map(p => p.toUpperCase()),
         }),
       })
@@ -101,21 +135,70 @@ export default function StudioPage() {
     setLoading(false)
   }
 
-  const saveDraft = async () => {
-    if (Object.keys(previews).length === 0) { showToast('Generate content first'); return }
-    showToast('Saving draft…')
-    await new Promise(r => setTimeout(r, 800))
-    setSaved(true)
-    showToast('Draft saved ✓')
+  // Build the /api/posts payload from whatever's been generated, restricted to
+  // platforms that actually have a connected social account (the API requires
+  // a socialAccountId per platform entry — there's nothing to publish to
+  // otherwise).
+  const buildPlatformPayload = () => {
+    const entries = Object.entries(previews)
+    const publishable = entries
+      .map(([key, d]) => ({ key, d, account: accountFor(key) }))
+      .filter(x => !!x.account)
+    const skipped = entries.length - publishable.length
+    return {
+      skipped,
+      platforms: publishable.map(({ key, d, account }) => ({
+        platform: key.toUpperCase(),
+        socialAccountId: account!.id,
+        adaptedText: d.text,
+        hashtags: d.hashtags ?? [],
+      })),
+    }
   }
 
-  const publishAll = async () => {
+  const submitPost = async (publishNow: boolean) => {
     if (Object.keys(previews).length === 0) { showToast('Generate content first'); return }
-    setPublishing(true)
-    await new Promise(r => setTimeout(r, 1200))
-    setPublishing(false)
-    showToast(`🚀 Queued for ${platforms.length} platforms`)
+    const { platforms: payloadPlatforms, skipped } = buildPlatformPayload()
+    if (payloadPlatforms.length === 0) {
+      showToast('None of these platforms are connected yet — go to Settings to connect one')
+      return
+    }
+
+    if (publishNow) setPublishing(true)
+    showToast(publishNow ? 'Publishing…' : 'Saving draft…')
+
+    try {
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawContent: raw,
+          tone,
+          format,
+          language,
+          publishNow,
+          platforms: payloadPlatforms,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSaved(true)
+        const note = skipped > 0 ? ` (${skipped} platform${skipped > 1 ? 's' : ''} skipped — not connected)` : ''
+        showToast(publishNow
+          ? `🚀 Queued for ${payloadPlatforms.length} platform${payloadPlatforms.length > 1 ? 's' : ''}${note}`
+          : `Draft saved ✓${note}`)
+      } else {
+        showToast(data.error ?? 'Something went wrong')
+      }
+    } catch {
+      showToast('Error connecting to the server')
+    } finally {
+      if (publishNow) setPublishing(false)
+    }
   }
+
+  const saveDraft = () => submitPost(false)
+  const publishAll = () => submitPost(true)
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A0A0F', fontFamily: 'system-ui, sans-serif', color: '#F0F0F8', WebkitFontSmoothing: 'antialiased' }}>
@@ -138,6 +221,7 @@ export default function StudioPage() {
             { icon: '📅', label: 'Scheduler', path: '/dashboard' },
             { icon: '📚', label: 'Content Library', path: '/dashboard' },
             { icon: '📊', label: 'Analytics', path: '/dashboard' },
+            { icon: '🔌', label: 'Settings', path: '/settings' },
           ].map(item => (
             <div key={item.label} onClick={() => item.path && router.push(item.path)}
               style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', margin: '1px 6px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500, color: item.active ? '#FF9933' : '#7A7A90', background: item.active ? 'rgba(255,153,51,0.1)' : 'transparent', transition: 'all 0.15s' }}
@@ -222,17 +306,27 @@ export default function StudioPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
               {Object.entries(PL).map(([key, name]) => {
                 const on = platforms.includes(key)
+                const connected = !!accountFor(key)
                 return (
                   <div key={key} onClick={() => togglePlatform(key)}
                     style={{ border: `1.5px solid ${on ? PC[key] : 'rgba(255,255,255,0.08)'}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', background: on ? '#18181F' : '#12121A', transition: 'all 0.2s', userSelect: 'none' as const }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: PC[key], boxShadow: on ? `0 0 6px ${PC[key]}` : 'none', flexShrink: 0, transition: 'box-shadow 0.2s' }} />
                     <div>
                       <div style={{ fontSize: '0.8rem', fontWeight: 600, color: on ? PC[key] : '#7A7A90' }}>{name}</div>
+                      <div style={{ fontSize: '0.62rem', color: connected ? '#34D399' : '#7A7A90' }}>
+                        {connected ? '✓ connected' : 'not connected'}
+                      </div>
                     </div>
                   </div>
                 )
               })}
             </div>
+            {accounts.length === 0 && (
+              <div style={{ marginTop: 8, fontSize: '0.75rem', color: '#7A7A90' }}>
+                No platforms connected yet — you can still generate previews, but Save/Publish need at least one.{' '}
+                <span onClick={() => router.push('/settings')} style={{ color: '#FF9933', cursor: 'pointer', fontWeight: 600 }}>Connect one in Settings →</span>
+              </div>
+            )}
           </div>
 
           {/* Schedule */}

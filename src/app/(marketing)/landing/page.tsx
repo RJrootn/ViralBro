@@ -6,12 +6,28 @@ export default function LandingPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const [waitlistError, setWaitlistError] = useState('')
+
   async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setSubmitted(true)
+    setWaitlistError('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), source: 'landing' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSubmitted(true)
+      } else {
+        setWaitlistError(data.error ?? 'Could not join the waitlist — try again')
+      }
+    } catch {
+      setWaitlistError('Could not reach the server — try again')
+    }
     setLoading(false)
   }
 
@@ -59,7 +75,7 @@ export default function LandingPage() {
 
         {/* Badge */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.2)', borderRadius: 20, padding: '6px 16px', marginBottom: 32, fontSize: '0.78rem', fontWeight: 600, color: '#FF9933' }}>
-          <span>🇮🇳</span> Built for Bharat · 12,000+ Indian creators
+          <span>🇮🇳</span> Built for Bharat · Now in private beta
         </div>
 
         {/* Headline */}
@@ -96,6 +112,9 @@ export default function LandingPage() {
             ✓ You're on the list! We'll reach out when VyralBro goes live.
           </div>
         )}
+        {waitlistError && (
+          <p style={{ fontSize: '0.78rem', color: '#F87171', marginTop: -12, marginBottom: 16 }}>{waitlistError}</p>
+        )}
 
         <p style={{ fontSize: '0.75rem', color: '#55556A', marginBottom: 64 }}>Free to start · No credit card · ₹0 setup cost</p>
 
@@ -122,6 +141,7 @@ export default function LandingPage() {
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#FEBC2E' }} />
             <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#28C840' }} />
             <span style={{ marginLeft: 12, fontSize: '0.75rem', color: '#55556A' }}>localhost:3000/dashboard</span>
+            <span style={{ marginLeft: 'auto', fontSize: '0.65rem', fontWeight: 700, color: '#7A7A90', background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '2px 9px' }}>Sample preview</span>
           </div>
           <div style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
             {[
@@ -251,32 +271,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SOCIAL PROOF */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Creators love VyralBro</div>
-          <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em' }}>From Mumbai to Manipur 🇮🇳</h2>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
-          {[
-            { name: 'Priya Sharma', handle: '@priyacreates', location: 'Mumbai', followers: '2.1L followers', quote: 'I used to spend 3 hours every day reformatting content for each platform. VyralBro does it in 10 seconds. Game changer for Indian creators.', color: '#E1306C' },
-            { name: 'Arjun Mehta', handle: '@arjunbuilds', location: 'Bengaluru', followers: '89K followers', quote: 'The Hindi and Kannada adaptation is spot on. My regional content now gets 3x more engagement because it actually sounds natural.', color: '#FF9933' },
-            { name: 'Kavya Reddy', handle: '@kavyatalks', location: 'Hyderabad', followers: '1.4L followers', quote: 'WhatsApp broadcast + Instagram + YouTube all in one dashboard. Finally a tool that understands how Indian creators actually work.', color: '#8B5CF6' },
-          ].map(t => (
-            <div key={t.name} style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: '28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ fontSize: '1.5rem', color: t.color }}>❝</div>
-              <p style={{ fontSize: '0.88rem', color: '#C0C0D0', lineHeight: 1.75, flex: 1 }}>{t.quote}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${t.color}22`, border: `1px solid ${t.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: t.color, flexShrink: 0 }}>
-                  {t.name.charAt(0)}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#F2F2F8' }}>{t.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: '#55556A' }}>{t.handle} · {t.location} · {t.followers}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* WHY WE'RE BUILDING THIS — honest founder framing, no invented testimonials */}
+      <section style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Why VyralBro</div>
+          <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em', marginBottom: 20 }}>Built by creators, for Bharat 🇮🇳</h2>
+          <p style={{ fontSize: '0.92rem', color: '#8585A0', lineHeight: 1.8, maxWidth: 640, margin: '0 auto' }}>
+            Every major social tool treats India as an afterthought — US-first pricing, no regional languages, WhatsApp ignored entirely.
+            We&apos;re building VyralBro from scratch for the way Indian creators actually work. We&apos;re in private beta right now —
+            join the waitlist and you&apos;ll be one of the first to shape what we build next.
+          </p>
         </div>
       </section>
 
@@ -328,7 +332,7 @@ export default function LandingPage() {
             India's Creator OS<br />is here.
           </h2>
           <p style={{ fontSize: '1rem', color: '#8585A0', lineHeight: 1.7, marginBottom: 40 }}>
-            Join 12,000+ Indian creators who are growing faster with VyralBro. Free to start. No credit card required.
+            Be one of the first Indian creators to try it. Free to start. No credit card required.
           </p>
           {!submitted ? (
             <form onSubmit={handleWaitlist} style={{ display: 'flex', gap: 10, maxWidth: 440, margin: '0 auto 16px' }}>
@@ -344,6 +348,9 @@ export default function LandingPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(19,136,8,0.1)', border: '1px solid rgba(19,136,8,0.3)', borderRadius: 12, padding: '14px 24px', marginBottom: 16, fontSize: '0.92rem', color: '#25D366', fontWeight: 600 }}>
               ✓ You're on the list!
             </div>
+          )}
+          {waitlistError && (
+            <p style={{ fontSize: '0.78rem', color: '#F87171', marginBottom: 16 }}>{waitlistError}</p>
           )}
           <p style={{ fontSize: '0.72rem', color: '#55556A' }}>Built with ❤️ in Bharat · vyralbro.in</p>
         </div>

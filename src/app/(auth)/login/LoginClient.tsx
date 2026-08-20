@@ -69,10 +69,9 @@ function Left() {
           {/* Stats */}
           <div style={{ display: 'flex', gap: 28, marginTop: 36 }}>
             {[
-              { val: '12K+', label: 'Indian creators', color: '#FF9933' },
-              { val: '6',    label: 'Platforms',       color: '#25D366' },
-              { val: '7',    label: 'Languages',       color: '#A78BFA' },
-              { val: '₹0',  label: 'To start',        color: '#60A5FA' },
+              { val: '6',   label: 'Platforms',  color: '#FF9933' },
+              { val: '7',   label: 'Languages',   color: '#A78BFA' },
+              { val: '₹0',  label: 'To start',    color: '#60A5FA' },
             ].map(s => (
               <div key={s.label}>
                 <div style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.03em', color: s.color }}>{s.val}</div>
@@ -81,15 +80,11 @@ function Left() {
             ))}
           </div>
 
-          {/* Social proof */}
+          {/* Beta note — honest framing instead of an invented user count */}
           <div style={{ background: '#18181F', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, marginTop: 28 }}>
-            <div style={{ display: 'flex' }}>
-              {['#FF9933','#8B5CF6','#138808','#1DA1F2'].map((c, i) => (
-                <div key={c} style={{ width: 26, height: 26, borderRadius: '50%', border: '2px solid #18181F', background: c, marginLeft: i === 0 ? 0 : -7 }} />
-              ))}
-            </div>
+            <span style={{ fontSize: '1.1rem' }}>🚀</span>
             <div style={{ fontSize: '0.75rem', color: '#8585A0', lineHeight: 1.5 }}>
-              <strong style={{ color: '#F2F2F8' }}>12,000+ Indian creators</strong> growing with VyralBro
+              <strong style={{ color: '#F2F2F8' }}>Private beta</strong> — early sign-ins help shape what ships next
             </div>
           </div>
         </div>

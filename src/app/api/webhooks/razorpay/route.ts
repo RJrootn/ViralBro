@@ -1,11 +1,11 @@
 // src/app/api/webhooks/razorpay/route.ts
 // Razorpay payment webhook — upgrade user plan after successful payment
 
-import crypto                from 'crypto'
 import { NextResponse }      from 'next/server'
 import { db }                from '@/lib/db/client'
 import { addMonths }         from 'date-fns'
 import type { Plan }         from '@prisma/client'
+import { verifyRazorpaySignature } from '@/lib/payments/verifyWebhookSignature'
 
 const AI_CREDITS_PER_PLAN: Record<Plan, number> = {
   FREE:    50,
@@ -18,13 +18,7 @@ export async function POST(req: Request) {
   const body      = await req.text()
   const signature = req.headers.get('x-razorpay-signature') ?? ''
 
-  // Verify webhook signature
-  const expected = crypto
-    .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
-    .update(body)
-    .digest('hex')
-
-  if (signature !== expected) {
+  if (!verifyRazorpaySignature(body, signature, process.env.RAZORPAY_WEBHOOK_SECRET ?? '')) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -57,21 +51,27 @@ export async function POST(req: Request) {
       },
     })
 
-    // Add monthly AI credits
-    const existingBalance = await db.aiCredit.aggregate({
-      where: { userId: payment.userId },
-      _sum:  { amount: true },
-    })
-    const balance   = existingBalance._sum.amount ?? 0
-    const toAdd     = AI_CREDITS_PER_PLAN[plan]
-
-    await db.aiCredit.create({
-      data: {
-        userId:  payment.userId,
-        amount:  toAdd,
-        reason:  'plan_monthly',
-        balance: balance + toAdd,
-      },
+    // Add monthly AI credits — atomic increment on the cached balance column
+    // (see prisma/schema.prisma note on User.aiCreditBalance) plus a ledger
+    // row for the audit trail. Previously this read the ledger's aggregate
+    // sum and wrote a new row computed from that read, which is a race
+    // condition if two webhook deliveries ever overlap for the same user.
+    // An interactive transaction lets the ledger row record the real
+    // resulting balance instead of a placeholder.
+    const toAdd = AI_CREDITS_PER_PLAN[plan]
+    await db.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: payment.userId },
+        data:  { aiCreditBalance: { increment: toAdd } },
+      })
+      await tx.aiCredit.create({
+        data: {
+          userId:  payment.userId,
+          amount:  toAdd,
+          reason:  'plan_monthly',
+          balance: updatedUser.aiCreditBalance,
+        },
+      })
     })
   }
 

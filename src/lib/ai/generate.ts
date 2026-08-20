@@ -102,10 +102,9 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
   const response = await client.messages.create({
     model:      'claude-sonnet-5',
     max_tokens: 8000,
-    // `thinking` isn't in this SDK's types — installed @anthropic-ai/sdk is 0.21.1,
-    // ~96 versions behind current (0.117.1). Cast needed until that's upgraded
-    // as its own task. Formatting task, not reasoning — and on Sonnet 5, thinking
-    // tokens count against max_tokens, so leaving it on ate into the response budget.
+    // Disabled intentionally: this is a formatting task, not a reasoning one,
+    // and on Sonnet 5 thinking tokens count against max_tokens — leaving it
+    // on would eat into the actual response budget for no benefit here.
     thinking:   { type: 'disabled' },
     system:     systemPrompt,
     messages:   [{ role: 'user', content: userPrompt }],
@@ -120,7 +119,7 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
       },
     }],
     tool_choice: { type: 'tool', name: 'return_adapted_content' },
-  } as any)
+  })
 
   if (response.stop_reason === 'max_tokens') {
     throw new Error(
@@ -159,7 +158,7 @@ export async function generateHashtags(
   const response = await client.messages.create({
     model:      'claude-sonnet-5',
     max_tokens: 500,
-    thinking:   { type: 'disabled' }, // see note in generateContent() re: SDK version
+    thinking:   { type: 'disabled' },
     messages: [{
       role: 'user',
       content: `Generate 8-12 relevant hashtags for this ${platform} post about: "${content.slice(0, 300)}"
@@ -175,7 +174,7 @@ Include a mix of: popular Indian hashtags, niche hashtags, and evergreen ones.`,
       },
     }],
     tool_choice: { type: 'tool', name: 'return_hashtags' },
-  } as any)
+  })
 
   const toolUse = response.content.find((b: any) => b.type === 'tool_use')
   return toolUse ? (toolUse as any).input.hashtags : []
@@ -189,7 +188,7 @@ export async function generateInsights(
   const response = await client.messages.create({
     model:      'claude-sonnet-5',
     max_tokens: 2000,
-    thinking:   { type: 'disabled' }, // see note in generateContent() re: SDK version
+    thinking:   { type: 'disabled' },
     system: 'You are a data-driven social media analyst specializing in the Indian creator economy.',
     messages: [{
       role: 'user',
@@ -220,7 +219,7 @@ ${JSON.stringify(analyticsData, null, 2)}`,
       },
     }],
     tool_choice: { type: 'tool', name: 'return_insights' },
-  } as any)
+  })
 
   const toolUse = response.content.find((b: any) => b.type === 'tool_use')
   return toolUse ? (toolUse as any).input.insights : []

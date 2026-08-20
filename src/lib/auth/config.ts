@@ -34,9 +34,12 @@ export const authOptions: NextAuthOptions = {
         await db.workspace.create({
           data: { userId: user.id, name: user.name ?? 'My Workspace' },
         })
-        await db.aiCredit.create({
-          data: { userId: user.id, amount: 50, reason: 'signup_bonus', balance: 50 },
-        })
+        await db.$transaction([
+          db.user.update({ where: { id: user.id }, data: { aiCreditBalance: { increment: 50 } } }),
+          db.aiCredit.create({
+            data: { userId: user.id, amount: 50, reason: 'signup_bonus', balance: 50 },
+          }),
+        ])
       } catch (e) {
         console.error('createUser event error:', e)
       }

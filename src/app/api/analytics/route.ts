@@ -24,12 +24,22 @@ export const GET = withErrorHandler(async (req) => {
   })
 
   // Daily breakdown for chart
-  const daily = await db.analytics.groupBy({
+  // NOTE: there is no `engagements` field on Analytics (only the individual
+  // likes/comments/shares/saves counts and a pre-computed engagementRate) —
+  // the previous version of this query asked Prisma to sum a field that
+  // doesn't exist, which throws at request time. Sum the real fields and
+  // derive a per-day engagement total in code instead.
+  const dailyRaw = await db.analytics.groupBy({
     by:    ['date'],
     where: { workspaceId: workspace.id, date: { gte: since } },
-    _sum:  { reach: true, engagements: true },
+    _sum:  { reach: true, likes: true, comments: true, shares: true, saves: true },
     orderBy: { date: 'asc' },
-  } as any)
+  })
+  const daily = dailyRaw.map(d => ({
+    date: d.date,
+    reach: d._sum.reach ?? 0,
+    engagements: (d._sum.likes ?? 0) + (d._sum.comments ?? 0) + (d._sum.shares ?? 0) + (d._sum.saves ?? 0),
+  }))
 
   // Per-platform breakdown
   const byPlatform = await db.analytics.groupBy({

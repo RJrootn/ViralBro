@@ -77,6 +77,16 @@ model User {
   planExpiresAt DateTime?
   razorpayCustomerId String?
 
+  // Cached running AI-credit balance, kept in sync with the AiCredit ledger.
+  // The ledger (AiCredit rows) used to be the *only* source of truth, which
+  // meant checking the balance and writing the debit were two separate
+  // reads/writes — two concurrent /api/ai/generate requests could both read
+  // the same balance and both "succeed," going negative. This column is
+  // updated with a single atomic UPDATE (increment for top-ups, a
+  // conditional guarded decrement for spends), so the balance itself can
+  // never be double-spent. AiCredit rows remain the audit trail.
+  aiCreditBalance Int @default(0)
+
   // Relations
   accounts      Account[]
   sessions      Session[]
@@ -307,6 +317,17 @@ enum PaymentStatus {
   CAPTURED
   FAILED
   REFUNDED
+}
+
+// ─────────────────────────────────────────
+// WAITLIST (pre-launch landing page signups)
+// ─────────────────────────────────────────
+
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("landing") // which form/page it came from
+  createdAt DateTime @default(now())
 }
 
 // ─────────────────────────────────────────

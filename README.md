@@ -69,6 +69,25 @@ See [`.env.example`](.env.example) for the full documented list.
 
 ---
 
+## Deploying the publish worker
+
+The Next.js app (Netlify) and the BullMQ worker (`src/lib/queue/worker.ts`) are
+**two separate processes** — this is not optional. Netlify Functions (and any
+request-scoped serverless host) spin down between requests, so nothing stays
+around to consume the publish queue. Scheduled/queued posts silently never
+publish unless the worker runs somewhere that stays up continuously.
+
+Recommended: a small **Railway** "Worker" service (no HTTP port needed) running:
+
+```bash
+npm run worker   # tsx src/lib/queue/worker.ts — see Procfile
+```
+
+pointed at the same `DATABASE_URL` and `REDIS_URL` as the main app. A `Procfile`
+is included (`worker: npm run worker`) for platforms that read it (Railway,
+Heroku-style buildpacks). Any small always-on VPS works too — the requirement
+is just "stays running," not any specific host.
+
 ## Project Structure
 
 ```
@@ -104,10 +123,12 @@ vyral/
 - [x] Instagram / Twitter / LinkedIn OAuth
 - [x] AES-256 token encryption + auto-refresh
 - [x] Razorpay payment integration
-- [ ] BullMQ publish worker
-- [ ] Analytics cron jobs
+- [x] BullMQ publish worker (code + deploy config — needs an always-on host, see "Deploying the publish worker")
+- [x] Studio wired to real post creation/publishing (was UI-only stubs)
+- [x] Settings page to connect social accounts (`PlatformConnector` existed but was never mounted)
+- [x] Landing page
+- [ ] Analytics fetch pipeline (worker plumbing exists; no platform fetch implemented yet)
 - [ ] Onboarding flow
-- [ ] Landing page
 - [ ] YouTube + WhatsApp
 - [ ] Mobile app
 
