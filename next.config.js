@@ -7,6 +7,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'pbs.twimg.com' },
       { protocol: 'https', hostname: '**.licdn.com' },
       { protocol: 'https', hostname: '**.r2.dev' },
+      { protocol: 'https', hostname: '*.s3.*.amazonaws.com' }, // AWS S3 media uploads (Studio)
     ],
   },
   // Allow large AI responses
