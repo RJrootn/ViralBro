@@ -108,13 +108,16 @@ async function igGraphFetch(path: string, body: Record<string, unknown>) {
 }
 
 // Poll a media container's processing status until it's ready to publish.
-// Reels/video containers go UNSPECIFIED/IN_PROGRESS → FINISHED (or ERROR).
-// Images are synchronous and don't need this, but calling it on an already-
-// finished container is harmless (single fast pass-through).
+// Reels/video containers go UNSPECIFIED/IN_PROGRESS → FINISHED (or ERROR) and
+// can genuinely take tens of seconds. Images are *usually* synchronous, but
+// calling media_publish before Meta's side has actually finished ingesting
+// the image can fail with a bare "Media ID is not available" error — a
+// short poll here (see publishInstagramImage) catches that instead of
+// failing immediately on what's often just a timing race.
 async function waitForContainerReady(
   containerId: string,
   token:       string,
-  { timeoutMs = 90_000, intervalMs = 3_000 } = {},
+  { timeoutMs = 90_000, intervalMs = 3_000, mediaLabel = 'video' }: { timeoutMs?: number; intervalMs?: number; mediaLabel?: string } = {},
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -127,12 +130,12 @@ async function waitForContainerReady(
 
     if (data.status_code === 'FINISHED') return
     if (data.status_code === 'ERROR') {
-      throw new Error('Instagram failed to process the video — check the file is a supported MP4/MOV.')
+      throw new Error(`Instagram failed to process the ${mediaLabel} — check the file is a supported format.`)
     }
     // IN_PROGRESS / EXPIRED / PUBLISHED / other → wait and re-check
     await new Promise(r => setTimeout(r, intervalMs))
   }
-  throw new Error('Timed out waiting for Instagram to finish processing the video (90s).')
+  throw new Error(`Timed out waiting for Instagram to finish processing the ${mediaLabel} (${Math.round(timeoutMs / 1000)}s).`)
 }
 
 async function publishInstagramImage(
@@ -143,6 +146,12 @@ async function publishInstagramImage(
     caption,
     access_token: token,
   })
+  // Short poll, not the full 90s video timeout — images are usually ready
+  // within a couple seconds, but publishing the instant the container is
+  // created can race Meta's own ingestion and fail with a bare "Media ID is
+  // not available" error. This catches that without meaningfully slowing
+  // down the common case.
+  await waitForContainerReady(container.id, token, { timeoutMs: 20_000, intervalMs: 2_000, mediaLabel: 'image' })
   const published = await igGraphFetch(`${igUserId}/media_publish`, {
     creation_id:  container.id,
     access_token: token,

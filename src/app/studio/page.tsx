@@ -237,6 +237,15 @@ export default function StudioPage() {
       return
     }
 
+    // Instagram's publisher rejects a post with no media outright (see
+    // publisher.ts) — catching it here, before the request even goes out,
+    // turns a confusing server-side failure into a plain "upload something"
+    // toast at the moment it's actually actionable.
+    if (payloadPlatforms.some(p => p.platform === 'INSTAGRAM') && media.length === 0) {
+      showToast('Instagram needs an image or video — upload one below before publishing')
+      return
+    }
+
     if (publishNow) setPublishing(true)
     showToast(publishNow ? 'Publishing…' : 'Saving draft…')
 
@@ -255,11 +264,24 @@ export default function StudioPage() {
       })
       const data = await res.json()
       if (data.success) {
-        setSaved(true)
         const note = skipped > 0 ? ` (${skipped} platform${skipped > 1 ? 's' : ''} skipped — not connected)` : ''
         showToast(publishNow
           ? `🚀 Queued for ${payloadPlatforms.length} platform${payloadPlatforms.length > 1 ? 's' : ''}${note}`
           : `Draft saved ✓${note}`)
+        if (publishNow) {
+          // Clear the form after a successful publish rather than leaving
+          // the same idea/media/previews sitting there — previously nothing
+          // reset here, so clicking "Publish All" again (or even just
+          // glancing back at the form) made it look like the same post
+          // hadn't gone out, and re-clicking created a genuine duplicate.
+          setRaw('')
+          setPreviews({})
+          setMedia([])
+          setMediaType('IMAGE')
+          setSaved(false)
+        } else {
+          setSaved(true)
+        }
       } else {
         showToast(data.error ?? 'Something went wrong')
       }
@@ -531,9 +553,19 @@ export default function StudioPage() {
                     </div>
                   </div>
                   <div style={{ padding: '12px 14px' }}>
-                    <div style={{ fontSize: '0.82rem', lineHeight: 1.65, color: '#F0F0F8', whiteSpace: 'pre-wrap', maxHeight: 140, overflow: 'hidden', position: 'relative' }}>
-                      {d.text}
-                    </div>
+                    {/* Editable — this used to be a read-only <div>, so the only
+                        way to fix a typo or reword something the AI generated
+                        was to regenerate the whole thing from scratch. Typing
+                        here updates `previews[p].text` directly, which is
+                        exactly what gets sent as `adaptedText` on publish. */}
+                    <textarea
+                      value={d.text ?? ''}
+                      onChange={e => setPreviews(prev => ({ ...prev, [p]: { ...prev[p], text: e.target.value } }))}
+                      rows={6}
+                      style={{ width: '100%', fontSize: '0.82rem', lineHeight: 1.65, color: '#F0F0F8', whiteSpace: 'pre-wrap', background: 'transparent', border: '1px solid transparent', borderRadius: 8, padding: '2px 4px', margin: '-2px -4px', resize: 'vertical' as const, fontFamily: 'inherit' }}
+                      onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)'}
+                      onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = 'transparent'}
+                    />
                     {d.hashtags?.length > 0 && (
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, marginTop: 8 }}>
                         {d.hashtags.map((tag: string) => (
