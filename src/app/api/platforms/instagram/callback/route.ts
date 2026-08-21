@@ -74,17 +74,53 @@ export async function GET(req: Request) {
     const tokenExpiresAt         = new Date(Date.now() + expiresIn * 1000)
 
     // ── 4. Get Facebook Pages ─────────────────────────────────────────────
+    // /me/accounts is the normal way to list a user's Pages, but it's known
+    // to come back empty for Pages owned by a Meta Business Portfolio when
+    // the OAuth grant went through the "Choose the Pages you want [app] to
+    // access" business-login flow (confirmed by direct testing: /me/accounts
+    // returned {data: []} for this exact token, while fetching the Page by
+    // ID directly returned instagram_business_account fine). So: try
+    // /me/accounts first (works for personal, non-Business Pages), and if
+    // it comes back empty, fall back to reading the granted Page IDs out of
+    // the token's own granular_scopes via /debug_token — that's the data
+    // Meta actually populates for business-login grants — and fetch each of
+    // those Pages directly by ID instead.
+    const pageFields = 'id,name,access_token,instagram_business_account{id,name,username,profile_picture_url,followers_count}'
+
     const pagesRes = await fetch(
       `https://graph.facebook.com/v19.0/me/accounts?` +
-      new URLSearchParams({
-        access_token: longLivedToken,
-        fields:       'id,name,access_token,instagram_business_account{id,name,username,profile_picture_url,followers_count}',
-      })
+      new URLSearchParams({ access_token: longLivedToken, fields: pageFields })
     )
     const pagesData = await pagesRes.json()
     if (pagesData.error) throw new Error(pagesData.error.message)
 
-    const pages: any[] = pagesData.data ?? []
+    let pages: any[] = pagesData.data ?? []
+
+    if (pages.length === 0) {
+      const debugRes = await fetch(
+        `https://graph.facebook.com/v19.0/debug_token?` +
+        new URLSearchParams({
+          input_token:  longLivedToken,
+          access_token: `${META_APP_ID}|${META_APP_SECRET}`,
+        })
+      )
+      const debugData = await debugRes.json()
+      const granularScopes: any[] = debugData?.data?.granular_scopes ?? []
+      const pageIds: string[] = granularScopes.find(s => s.scope === 'pages_show_list')?.target_ids ?? []
+
+      pages = (
+        await Promise.all(
+          pageIds.map(async (pageId) => {
+            const pageRes = await fetch(
+              `https://graph.facebook.com/v19.0/${pageId}?` +
+              new URLSearchParams({ access_token: longLivedToken, fields: pageFields })
+            )
+            const pageJson = await pageRes.json()
+            return pageJson.error ? null : pageJson
+          })
+        )
+      ).filter(Boolean)
+    }
 
     // Find page with Instagram Business Account
     const pageWithIG = pages.find(p => p.instagram_business_account)
