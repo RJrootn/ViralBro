@@ -158,15 +158,16 @@ enum SocialPlatform {
 // ─────────────────────────────────────────
 
 model Post {
-  id          String     @id @default(cuid())
+  id          String        @id @default(cuid())
   workspaceId String
-  title       String?    // internal label
-  rawContent  String     @db.Text  // original idea/draft
-  tone        String     @default("authentic")
-  format      String     @default("listicle")
-  language    String     @default("en")
-  mediaUrls   String[]   // uploaded images/videos
-  status      PostStatus @default(DRAFT)
+  title       String?       // internal label
+  rawContent  String        @db.Text  // original idea/draft
+  tone        String        @default("authentic")
+  format      String        @default("listicle")
+  language    String        @default("en")
+  mediaUrls   String[]      // uploaded images/videos, in S3
+  mediaType   PostMediaType @default(IMAGE)
+  status      PostStatus    @default(DRAFT)
   scheduledAt DateTime?
   publishedAt DateTime?
   createdAt   DateTime   @default(now())
@@ -186,6 +187,19 @@ enum PostStatus {
   CANCELLED
 }
 
+// What kind of post this is on the destination platform. Distinct upload
+// flows on Instagram: IMAGE/VIDEO are normal feed posts, REEL is a Reels
+// upload (feed video posts on IG are now unified under the Reels endpoint
+// too — see publisher.ts), STORY is ephemeral (24h, no caption support on
+// the Graph API), CAROUSEL is a multi-image/video feed post.
+enum PostMediaType {
+  IMAGE
+  VIDEO
+  REEL
+  STORY
+  CAROUSEL
+}
+
 // Per-platform adapted content
 model PostPlatform {
   id              String         @id @default(cuid())
@@ -195,6 +209,7 @@ model PostPlatform {
   adaptedText     String         @db.Text
   hashtags        String[]
   mediaUrls       String[]       // platform-specific media
+  mediaType       PostMediaType  @default(IMAGE)
   platformPostId  String?        // ID returned by the platform after publish
   status          PostStatus     @default(DRAFT)
   errorMessage    String?

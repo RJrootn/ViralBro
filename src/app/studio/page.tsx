@@ -52,6 +52,20 @@ interface ConnectedAccount {
   platform: string // uppercase, e.g. 'INSTAGRAM'
 }
 
+interface UploadedMedia {
+  url:         string
+  contentType: string
+  name:        string
+}
+
+const MEDIA_TYPE_OPTIONS = [
+  { key: 'IMAGE',    label: '🖼️ Image',   hint: 'Feed post' },
+  { key: 'VIDEO',    label: '🎬 Video',   hint: 'Feed video' },
+  { key: 'REEL',     label: '🎞️ Reel',    hint: 'Short-form video' },
+  { key: 'STORY',    label: '⏱️ Story',   hint: '24h, no caption on IG' },
+  { key: 'CAROUSEL', label: '🖼️🖼️ Carousel', hint: '2+ images/videos' },
+] as const
+
 export default function StudioPage() {
   const router = useRouter()
   const { data: session } = useSession()
@@ -68,6 +82,10 @@ export default function StudioPage() {
   const [toast, setToast] = useState('')
   const [langIdx, setLangIdx] = useState(0)
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
+  const [media, setMedia] = useState<UploadedMedia[]>([])
+  const [mediaType, setMediaType] = useState<typeof MEDIA_TYPE_OPTIONS[number]['key']>('IMAGE')
+  const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -97,6 +115,59 @@ export default function StudioPage() {
   const togglePlatform = (p: string) => {
     setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
   }
+
+  // Upload flow: ask our API for a presigned S3 PUT URL, then PUT the file
+  // bytes straight to S3 from the browser (never through our own server —
+  // Netlify functions cap request bodies well below Reels-length video).
+  // XHR (not fetch) so we get upload-progress events for the progress bar.
+  const uploadFile = async (file: File) => {
+    setUploading(true)
+    setUploadPct(0)
+    try {
+      const presignRes = await fetch('/api/media/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      })
+      const presignData = await presignRes.json()
+      if (!presignData.success) {
+        showToast(presignData.error ?? 'Could not prepare upload')
+        return
+      }
+      const { uploadUrl, publicUrl } = presignData.data
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadPct(Math.round((e.loaded / e.total) * 100))
+        }
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error(`Upload failed (${xhr.status})`))
+        xhr.onerror = () => reject(new Error('Upload failed — network error'))
+        xhr.send(file)
+      })
+
+      setMedia(prev => [...prev, { url: publicUrl, contentType: file.type, name: file.name }])
+      // Auto-pick a sensible media type from the file if the user hasn't
+      // already chosen something more specific (e.g. they picked "Reel"
+      // before selecting the file — don't stomp that).
+      if (file.type.startsWith('video/') && mediaType === 'IMAGE') setMediaType('VIDEO')
+      showToast(`✓ Uploaded ${file.name}`)
+    } catch (e: any) {
+      showToast(e.message ?? 'Upload failed')
+    } finally {
+      setUploading(false)
+      setUploadPct(0)
+    }
+  }
+
+  const onFilesSelected = (files: FileList | null) => {
+    if (!files) return
+    Array.from(files).forEach(uploadFile)
+  }
+
+  const removeMedia = (url: string) => setMedia(prev => prev.filter(m => m.url !== url))
 
   const generate = async () => {
     if (!raw.trim()) { showToast('Write your idea first'); return }
@@ -152,6 +223,8 @@ export default function StudioPage() {
         socialAccountId: account!.id,
         adaptedText: d.text,
         hashtags: d.hashtags ?? [],
+        mediaUrls: media.map(m => m.url),
+        mediaType,
       })),
     }
   }
@@ -329,9 +402,50 @@ export default function StudioPage() {
             )}
           </div>
 
+          {/* Media */}
+          <div>
+            <FieldLabel num="06" label="Media (image / video / Reel / Story)" />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 10 }}>
+              {MEDIA_TYPE_OPTIONS.map(opt => (
+                <div key={opt.key} onClick={() => setMediaType(opt.key)} title={opt.hint}
+                  style={{ padding: '7px 12px', borderRadius: 20, border: `1px solid ${mediaType === opt.key ? 'rgba(255,153,51,0.4)' : 'rgba(255,255,255,0.11)'}`, background: mediaType === opt.key ? 'rgba(255,153,51,0.1)' : '#18181F', color: mediaType === opt.key ? '#FF9933' : '#7A7A90', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', userSelect: 'none' as const }}>
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed rgba(255,255,255,0.15)', borderRadius: 12, padding: '18px', cursor: uploading ? 'wait' : 'pointer', color: '#7A7A90', fontSize: '0.82rem', background: '#18181F', transition: 'border-color 0.2s' }}>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple
+                onChange={e => onFilesSelected(e.target.files)} disabled={uploading}
+                style={{ display: 'none' }} />
+              {uploading
+                ? <><Spinner /> Uploading… {uploadPct}%</>
+                : <>⬆ Drop or click to upload images/video · Reels & Stories supported</>}
+            </label>
+
+            {media.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginTop: 10 }}>
+                {media.map(m => (
+                  <div key={m.url} style={{ position: 'relative', width: 72, height: 72, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.11)', background: '#0A0A0F' }}>
+                    {m.contentType.startsWith('video/')
+                      ? <video src={m.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                      : <img src={m.url} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    <div onClick={() => removeMedia(m.url)}
+                      style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      ✕
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: '0.68rem', color: '#5A5A72', marginTop: 6 }}>
+              Instagram requires at least one image or video. Stories won&apos;t show your caption on Instagram (Meta doesn&apos;t support it there).
+            </div>
+          </div>
+
           {/* Schedule */}
           <div>
-            <FieldLabel num="06" label="Schedule" />
+            <FieldLabel num="07" label="Schedule" />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
               {['🚀 Post now', '✦ AI best time', '📅 Custom'].map(s => (
                 <Pill key={s} label={s} active={schedule === s} onClick={() => setSchedule(s)} />

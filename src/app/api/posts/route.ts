@@ -8,7 +8,16 @@ import { withErrorHandler, ok, err, PLAN_LIMITS } from '@/lib/api'
 import { requireWorkspace }               from '@/lib/auth/session'
 import { db }                             from '@/lib/db/client'
 import { schedulePost, publishNow }       from '@/lib/queue'
-import type { SocialPlatform }            from '@prisma/client'
+import type { SocialPlatform, PostMediaType } from '@prisma/client'
+import { isVideoUrl }                     from '@/lib/storage/s3'
+
+const MEDIA_TYPES = ['IMAGE', 'VIDEO', 'REEL', 'STORY', 'CAROUSEL'] as const
+// Media types that require a video file. Used to sanity-check that a post
+// hasn't been marked REEL/VIDEO without an actual video URL among its media
+// — an easy mistake in the Studio UI (e.g. leaving mediaType on VIDEO after
+// swapping in an image) that would otherwise only surface as a confusing
+// Graph API error once the worker tries to publish it.
+const VIDEO_MEDIA_TYPES = new Set<(typeof MEDIA_TYPES)[number]>(['VIDEO', 'REEL'])
 
 // ── GET: list posts ───────────────────────────────────────────────────────
 export const GET = withErrorHandler(async (req) => {
@@ -59,6 +68,8 @@ const createSchema = z.object({
     socialAccountId: z.string(),
     adaptedText:    z.string(),
     hashtags:       z.array(z.string()).default([]),
+    mediaUrls:      z.array(z.string().url()).default([]),
+    mediaType:      z.enum(MEDIA_TYPES).default('IMAGE'),
   })).min(1),
 })
 
@@ -91,8 +102,29 @@ export const POST = withErrorHandler(async (req) => {
     }
   }
 
+  // Video/Reel need an actual video file among their media — catch the
+  // Studio-UI mistake of leaving mediaType on VIDEO/REEL after swapping in
+  // an image, before it becomes a confusing Graph API error at publish time.
+  for (const p of body.platforms) {
+    if (VIDEO_MEDIA_TYPES.has(p.mediaType) && !p.mediaUrls.some(isVideoUrl)) {
+      return err(
+        `${p.platform}: mediaType is "${p.mediaType}" but no video file was attached. Upload a video or switch the media type.`,
+        422,
+      )
+    }
+    if (p.platform === 'INSTAGRAM' && p.mediaUrls.length === 0) {
+      return err('INSTAGRAM: requires at least one image or video.', 422)
+    }
+  }
+
   const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null
   const status      = body.publishNow ? 'PUBLISHING' : scheduledAt ? 'SCHEDULED' : 'DRAFT'
+
+  // Post-level mediaUrls/mediaType are a summary across platforms (e.g. for
+  // showing a thumbnail in the content library) — the per-platform values on
+  // PostPlatform are what publisher.ts actually reads when posting.
+  const allMediaUrls = Array.from(new Set(body.platforms.flatMap(p => p.mediaUrls)))
+  const primaryMediaType: PostMediaType = body.platforms.find(p => p.mediaUrls.length)?.mediaType ?? 'IMAGE'
 
   const post = await db.post.create({
     data: {
@@ -102,6 +134,8 @@ export const POST = withErrorHandler(async (req) => {
       tone:        body.tone,
       format:      body.format,
       language:    body.language,
+      mediaUrls:   allMediaUrls,
+      mediaType:   primaryMediaType,
       scheduledAt,
       status:      status as any,
       platforms: {
@@ -110,6 +144,8 @@ export const POST = withErrorHandler(async (req) => {
           socialAccountId: p.socialAccountId,
           adaptedText:     p.adaptedText,
           hashtags:        p.hashtags,
+          mediaUrls:       p.mediaUrls,
+          mediaType:       p.mediaType as PostMediaType,
           status:          status as any,
         })),
       },

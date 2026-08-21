@@ -67,6 +67,7 @@ export const publishWorker = new Worker<PublishJobData>(
       postPlatform.adaptedText,
       postPlatform.hashtags,
       postPlatform.mediaUrls,
+      postPlatform.mediaType,
     )
 
     if (!result.success) {
