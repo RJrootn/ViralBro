@@ -18,10 +18,15 @@ const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID!
 const APP_URL            = process.env.NEXT_PUBLIC_APP_URL!
 const CALLBACK_URL       = `${APP_URL}/api/platforms/linkedin/callback`
 
-// Required scopes for posting + profile read
+// Required scopes for posting + profile read.
+// LinkedIn retired the old "Sign In with LinkedIn" product (r_liteprofile /
+// r_emailaddress) — new apps only get "Sign In with LinkedIn using OpenID
+// Connect", which grants openid/profile/email instead. w_member_social
+// (posting) still comes from the separate "Share on LinkedIn" product.
 const SCOPES = [
-  'r_liteprofile',
-  'r_emailaddress',
+  'openid',
+  'profile',
+  'email',
   'w_member_social',
 ].join(' ')
 

@@ -66,35 +66,25 @@ export async function GET(req: Request) {
     const tokenExpiresAt = new Date(Date.now() + (expiresIn ?? 5184000) * 1000)
 
     // ── Fetch LinkedIn profile ────────────────────────────────────────────
-    const [profileRes, emailRes] = await Promise.all([
-      fetch('https://api.linkedin.com/v2/me?projection=(id,localizedFirstName,localizedLastName,profilePicture(displayImage~:playableStreams))', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }),
-      fetch('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }),
-    ])
+    // With the openid/profile/email scopes (see ../route.ts), profile data
+    // comes from the single OIDC /v2/userinfo endpoint — the old /v2/me +
+    // /v2/emailAddress endpoints require r_liteprofile/r_emailaddress,
+    // scopes LinkedIn no longer grants to apps using the current
+    // "Sign In with LinkedIn using OpenID Connect" product.
+    const userinfoRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const profileData = await userinfoRes.json()
 
-    const profileData = await profileRes.json()
-    const emailData   = await emailRes.json()
-
-    if (profileData.status === 401 || profileData.serviceErrorCode) {
+    if (!userinfoRes.ok || !profileData.sub) {
       throw new Error('Failed to fetch LinkedIn profile — check app permissions')
     }
 
-    const firstName   = profileData.localizedFirstName ?? ''
-    const lastName    = profileData.localizedLastName  ?? ''
-    const displayName = `${firstName} ${lastName}`.trim()
-    const memberId    = profileData.id
-
-    // Profile picture (largest available)
-    const pictures: any[] = profileData.profilePicture?.['displayImage~']?.elements ?? []
-    const avatarUrl = pictures.length
-      ? pictures[pictures.length - 1]?.identifiers?.[0]?.identifier
-      : undefined
-
-    // Email (for display/matching only, not stored)
-    const email = emailData.elements?.[0]?.['handle~']?.emailAddress
+    const displayName = profileData.name
+      ?? `${profileData.given_name ?? ''} ${profileData.family_name ?? ''}`.trim()
+    const memberId  = profileData.sub // OIDC subject — LinkedIn's stable member id
+    const avatarUrl = profileData.picture
+    const email     = profileData.email
 
     // Use memberId as username (LinkedIn doesn't have public usernames in v2)
     const platformUsername = email ?? memberId
@@ -112,7 +102,7 @@ export async function GET(req: Request) {
         accessToken:      encryptToken(accessToken),
         refreshToken:     refreshToken ? encryptToken(refreshToken) : null,
         tokenExpiresAt,
-        scopes:           ['r_liteprofile', 'r_emailaddress', 'w_member_social'],
+        scopes:           ['openid', 'profile', 'email', 'w_member_social'],
       },
       update: {
         platformUserId:   memberId,
