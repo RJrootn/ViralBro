@@ -44,8 +44,10 @@ export default function ContentLibraryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<string | undefined>(undefined)
+  const [retrying, setRetrying] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true)
     const qs = filter ? `?status=${filter}` : ''
     fetch(`/api/posts${qs}`)
@@ -56,7 +58,33 @@ export default function ContentLibraryPage() {
       })
       .catch(() => setError('Failed to load posts'))
       .finally(() => setLoading(false))
-  }, [filter])
+  }
+
+  useEffect(load, [filter])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const retryPost = async (postId: string) => {
+    setRetrying(postId)
+    try {
+      const res = await fetch(`/api/posts/${postId}/retry`, { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        setToast(`Retrying on ${data.data.retried.join(', ')} — no AI credits used`)
+        load()
+      } else {
+        setToast(data.error ?? 'Retry failed')
+      }
+    } catch {
+      setToast('Retry failed — network error')
+    } finally {
+      setRetrying(null)
+    }
+  }
 
   return (
     <>
@@ -72,7 +100,12 @@ export default function ContentLibraryPage() {
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px', position: 'relative' as const }}>
+          {toast && (
+            <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#18181F', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#F0F0F8', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 50 }}>
+              {toast}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
             {FILTERS.map(f => (
               <button key={f.label} onClick={() => setFilter(f.key)}
@@ -146,6 +179,20 @@ export default function ContentLibraryPage() {
                           : p.scheduledAt ? `Scheduled for ${new Date(p.scheduledAt).toLocaleString()}`
                           : `Created ${new Date(p.createdAt).toLocaleDateString()}`}
                       </div>
+                      {p.platforms.some(pl => pl.status === 'FAILED') && (
+                        <button
+                          onClick={e => { e.stopPropagation(); retryPost(p.id) }}
+                          disabled={retrying === p.id}
+                          style={{
+                            marginTop: 10, width: '100%', padding: '7px 0', borderRadius: 8,
+                            border: '1px solid rgba(248,113,113,0.35)',
+                            background: retrying === p.id ? 'rgba(248,113,113,0.06)' : 'rgba(248,113,113,0.12)',
+                            color: '#F87171', fontSize: '0.72rem', fontWeight: 700,
+                            cursor: retrying === p.id ? 'default' : 'pointer', fontFamily: 'inherit',
+                          }}>
+                          {retrying === p.id ? 'Retrying…' : '↻ Retry failed platform(s)'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
