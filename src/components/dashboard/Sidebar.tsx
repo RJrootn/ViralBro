@@ -29,18 +29,13 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PLATFORM_COLORS_BY_ENUM, PLATFORM_LABELS } from '@/lib/constants/platforms'
+import { useConnectedAccounts } from '@/lib/hooks/useConnectedAccounts'
 
 const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
 export type SidebarPage =
   | 'dashboard' | 'studio' | 'scheduler' | 'library' | 'analytics'
   | 'team' | 'comments' | 'notifications' | 'settings'
-
-interface ConnectedAccount {
-  id: string
-  platform: string
-  platformUsername: string
-}
 
 const NAV_PATHS: Record<SidebarPage, string> = {
   dashboard:     '/dashboard',
@@ -71,18 +66,11 @@ export default function Sidebar() {
   const pathname = usePathname()
   const active = activeFromPathname(pathname ?? '/dashboard')
   const [langIdx, setLangIdx] = useState(0)
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
+  const accounts = useConnectedAccounts()
 
   useEffect(() => {
     const interval = setInterval(() => setLangIdx(i => (i + 1) % LANGUAGES.length), 1800)
     return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/platforms/connect')
-      .then(res => res.json())
-      .then(data => { if (data.success) setAccounts(data.data.accounts) })
-      .catch(() => {})
   }, [])
 
   const nav = (page: SidebarPage) => router.push(NAV_PATHS[page])

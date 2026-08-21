@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import toast                   from 'react-hot-toast'
 import type { ConnectedAccount, SocialPlatform } from '@/types/oauth'
+import { invalidateConnectedAccounts } from '@/lib/hooks/useConnectedAccounts'
 
 // ── Platform display config ───────────────────────────────────────────────
 const PLATFORMS: {
@@ -117,6 +118,7 @@ export function PlatformConnector() {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname)
       fetchAccounts()
+      invalidateConnectedAccounts() // sidebar's cached list should show this immediately, not on its next remount
     } else if (platform && error) {
       toast.error(`${platform} connection failed: ${decodeURIComponent(error)}`)
       window.history.replaceState({}, '', window.location.pathname)
@@ -142,6 +144,7 @@ export function PlatformConnector() {
       if (data.success) {
         toast.success(`${platform} disconnected`)
         setAccounts(prev => prev.filter(a => a.platform !== platform))
+        invalidateConnectedAccounts() // sidebar's cached list should drop this immediately, not on its next remount
       } else {
         toast.error(data.error ?? 'Failed to disconnect')
       }
