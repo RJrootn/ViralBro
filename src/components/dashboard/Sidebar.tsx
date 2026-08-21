@@ -12,10 +12,21 @@
 // Studio (/studio) intentionally keeps its own slimmer, focus-mode sidebar
 // (no workspace/connected-channels section) — that's a deliberate design
 // difference for the content-creation flow, not an oversight.
+//
+// This component lives in src/app/dashboard/layout.tsx rather than being
+// imported by each /dashboard/* page individually. That matters: mounting a
+// fresh Sidebar per-page meant every click between sections re-fetched
+// "Connected Channels" from an empty state, which is exactly the
+// flash-then-populate lag that was visible when switching sections. Living
+// in the layout instead means React keeps this component mounted across
+// client-side navigations within /dashboard/* — the fetch runs once, not
+// once per click. Active-item highlighting is derived from the current
+// pathname instead of a prop, since the layout renders one Sidebar shared
+// by every page under it.
 
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PLATFORM_COLORS_BY_ENUM, PLATFORM_LABELS } from '@/lib/constants/platforms'
 
@@ -43,9 +54,22 @@ const NAV_PATHS: Record<SidebarPage, string> = {
   settings:      '/settings',
 }
 
-export default function Sidebar({ active }: { active: SidebarPage }) {
+function activeFromPathname(pathname: string): SidebarPage {
+  if (pathname.startsWith('/dashboard/library')) return 'library'
+  if (pathname.startsWith('/dashboard/scheduler')) return 'scheduler'
+  if (pathname.startsWith('/dashboard/team')) return 'team'
+  if (pathname.startsWith('/dashboard/comments')) return 'comments'
+  if (pathname.startsWith('/dashboard/notifications')) return 'notifications'
+  if (pathname.startsWith('/settings')) return 'settings'
+  if (pathname.startsWith('/studio')) return 'studio'
+  return 'dashboard'
+}
+
+export default function Sidebar() {
   const { data: session } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
+  const active = activeFromPathname(pathname ?? '/dashboard')
   const [langIdx, setLangIdx] = useState(0)
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
 
