@@ -9,6 +9,11 @@ import { NextResponse }       from 'next/server'
 import { requireWorkspace }   from '@/lib/auth/session'
 import { generateOAuthState } from '@/lib/tokens/encrypt'
 
+// See instagram/route.ts — requireWorkspace() reads cookies but Next can't
+// detect that through the import, so without this the build tries to
+// prerender this route statically and fails.
+export const dynamic = 'force-dynamic'
+
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID!
 const APP_URL            = process.env.NEXT_PUBLIC_APP_URL!
 const CALLBACK_URL       = `${APP_URL}/api/platforms/linkedin/callback`

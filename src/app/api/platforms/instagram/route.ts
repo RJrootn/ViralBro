@@ -9,6 +9,12 @@ import { NextResponse }       from 'next/server'
 import { requireWorkspace }   from '@/lib/auth/session'
 import { generateOAuthState } from '@/lib/tokens/encrypt'
 
+// This route calls getServerSession() (via requireWorkspace), which reads
+// cookies — but Next.js's static-analysis doesn't see through that call, so
+// without this it tries to prerender the route at BUILD time with no
+// request/cookies available, throws, and fails the whole `next build`.
+export const dynamic = 'force-dynamic'
+
 const META_APP_ID     = process.env.META_APP_ID!
 const APP_URL         = process.env.NEXT_PUBLIC_APP_URL!
 const CALLBACK_URL    = `${APP_URL}/api/platforms/instagram/callback`
