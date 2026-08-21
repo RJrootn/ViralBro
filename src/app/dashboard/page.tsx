@@ -1,11 +1,24 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { PLATFORM_COLORS } from '@/lib/constants/platforms'
 
 const PC = PLATFORM_COLORS
 
+function fmt(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function last30Days() {
+  const end = new Date()
+  const start = new Date(end)
+  start.setDate(start.getDate() - 30)
+  return { start, end }
+}
+
 export default function DashboardPage() {
   const router = useRouter()
+  const [range, setRange] = useState(last30Days)
 
   return (
     <>
@@ -13,11 +26,11 @@ export default function DashboardPage() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#FF9933 33.33%,#fff 33.33% 66.66%,#138808 66.66%)' }} />
           <div>
             <div style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>Dashboard</div>
-            <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>Last 30 days · All channels combined</div>
+            <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>{fmt(range.start)} – {fmt(range.end)} · All channels combined</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <TbBtn label="📅 Apr 15 – May 15" />
-            <TbBtn label="This Team" />
+            <DateRangeButton range={range} onChange={setRange} />
+            <WorkspaceButton />
             <button onClick={() => router.push('/studio')}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.78rem', fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 12px rgba(255,153,51,0.3)', fontFamily: 'inherit' }}>
               + Post Content
@@ -189,12 +202,72 @@ export default function DashboardPage() {
   )
 }
 
-function TbBtn({ label }: { label: string }) {
+// Real date-range picker — previously "📅 Apr 15 – May 15" was static text
+// with a dropdown chevron that did nothing when clicked. The metric cards
+// below are still labeled sample data (no analytics ingestion pipeline
+// exists yet — see the banner above them), so picking a range here doesn't
+// change those numbers; it's an honest, working control ready for when that
+// pipeline lands, not a fake filter pretending to reslice fake data.
+function DateRangeButton({ range, onChange }: { range: { start: Date; end: Date }; onChange: (r: { start: Date; end: Date }) => void }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(range)
+
+  const toISO = (d: Date) => d.toISOString().slice(0, 10)
+
   return (
-    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: '#18181F', fontSize: '0.78rem', fontWeight: 600, color: '#F0F0F8', cursor: 'pointer', fontFamily: 'inherit' }}
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => { setDraft(range); setOpen(o => !o) }}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: '#18181F', fontSize: '0.78rem', fontWeight: 600, color: '#F0F0F8', cursor: 'pointer', fontFamily: 'inherit' }}
+        onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)'}
+        onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.11)'}>
+        📅 {fmt(range.start)} – {fmt(range.end)} ▾
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: '#18181F', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 10, padding: 14, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+          <label style={{ fontSize: '0.7rem', color: '#7A7A90', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            From
+            <input type="date" value={toISO(draft.start)} max={toISO(draft.end)}
+              onChange={e => setDraft(d => ({ ...d, start: new Date(e.target.value) }))}
+              style={{ background: '#0E0E16', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 6, padding: '5px 8px', color: '#F0F0F8', fontFamily: 'inherit', fontSize: '0.78rem' }} />
+          </label>
+          <label style={{ fontSize: '0.7rem', color: '#7A7A90', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            To
+            <input type="date" value={toISO(draft.end)} min={toISO(draft.start)} max={toISO(new Date())}
+              onChange={e => setDraft(d => ({ ...d, end: new Date(e.target.value) }))}
+              style={{ background: '#0E0E16', border: '1px solid rgba(255,255,255,0.11)', borderRadius: 6, padding: '5px 8px', color: '#F0F0F8', fontFamily: 'inherit', fontSize: '0.78rem' }} />
+          </label>
+          <button onClick={() => { onChange(draft); setOpen(false) }}
+            style={{ marginTop: 4, padding: '6px 0', borderRadius: 7, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.75rem', fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Apply
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Real workspace badge — previously "This Team ▾" was a dropdown-styled
+// button that did nothing, implying team-switching that doesn't exist
+// (every workspace has exactly one owner right now — see Team's honest
+// "coming soon" page). This shows the actual workspace name and links to
+// that page instead of pretending there's a team to switch between.
+function WorkspaceButton() {
+  const router = useRouter()
+  const [name, setName] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/workspace')
+      .then(res => res.json())
+      .then(data => { if (data.success) setName(data.data.name) })
+      .catch(() => {})
+  }, [])
+
+  return (
+    <button onClick={() => router.push('/dashboard/team')}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: '#18181F', fontSize: '0.78rem', fontWeight: 600, color: '#F0F0F8', cursor: 'pointer', fontFamily: 'inherit' }}
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.11)'}>
-      {label} ▾
+      🏢 {name ?? 'My Workspace'}
     </button>
   )
 }
