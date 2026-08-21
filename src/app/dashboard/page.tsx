@@ -16,9 +16,70 @@ function last30Days() {
   return { start, end }
 }
 
+function compact(n: number) {
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+}
+
+interface AnalyticsResponse {
+  totals: { reach?: number; likes?: number; comments?: number; shares?: number; saves?: number; clicks?: number }
+  avgEngagementRate: number
+  daily: Array<unknown>
+  postCount: number
+}
+
+// Fake fallback shown only until real Analytics rows exist for the selected
+// range (see fetchInstagramInsights in src/lib/social/analytics.ts, which
+// now actually populates that table 20 min + 24h after each Instagram
+// publish). "Posts Published" is never part of this fallback — it comes
+// straight from a real Post count either way, so there's no reason to fake
+// the one number that was always real for free.
+const SAMPLE_CARDS = [
+  { label: 'Total Reach',     val: '3.09M', delta: '↑ 18.4% vs last month', up: true,  icon: '📡', color: '#FF9933' },
+  { label: 'Avg. Engagement', val: '6.7%',  delta: '↑ 2.1pp all platforms', up: true,  icon: '💬', color: '#8B5CF6' },
+  { label: 'Total Saves',     val: '41.2K', delta: '↓ 3.2% — needs fix',   up: false, icon: '🔖', color: '#FBBF24' },
+  { label: 'Engagements',     val: '2.18L', delta: '↑ 41% — best ever!',   up: true,  icon: '👁', color: '#60A5FA' },
+]
+
 export default function DashboardPage() {
   const router = useRouter()
   const [range, setRange] = useState(last30Days)
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null)
+
+  useEffect(() => {
+    const days = Math.max(1, Math.min(90, Math.round((range.end.getTime() - range.start.getTime()) / 86_400_000)))
+    fetch(`/api/analytics?days=${days}`)
+      .then(res => res.json())
+      .then(data => { if (data.success) setAnalytics(data.data) })
+      .catch(() => {})
+  }, [range])
+
+  // True only once at least one real Analytics row exists for this range —
+  // i.e. the ingestion pipeline has actually fetched something, not just
+  // that the endpoint responded.
+  const hasRealAnalytics = !!analytics && analytics.daily.length > 0
+
+  const postsPublishedCard = {
+    label: 'Posts Published',
+    val: String(analytics?.postCount ?? 0),
+    delta: null as string | null,
+    up: null as boolean | null,
+    icon: '📝',
+    color: '#25D399',
+  }
+
+  const realCards = analytics ? [
+    { label: 'Total Reach',     val: compact(analytics.totals.reach ?? 0),     delta: null, up: null, icon: '📡', color: '#FF9933' },
+    { label: 'Avg. Engagement', val: `${((analytics.avgEngagementRate ?? 0) * 100).toFixed(1)}%`, delta: null, up: null, icon: '💬', color: '#8B5CF6' },
+    { label: 'Total Saves',     val: compact(analytics.totals.saves ?? 0),     delta: null, up: null, icon: '🔖', color: '#FBBF24' },
+    {
+      label: 'Engagements', delta: null, up: null, icon: '👁', color: '#60A5FA',
+      val: compact((analytics.totals.likes ?? 0) + (analytics.totals.comments ?? 0) + (analytics.totals.shares ?? 0) + (analytics.totals.saves ?? 0)),
+    },
+  ] : []
+
+  const cards = hasRealAnalytics
+    ? [realCards[0], realCards[1], postsPublishedCard, realCards[2], realCards[3]]
+    : [SAMPLE_CARDS[0], SAMPLE_CARDS[1], postsPublishedCard, SAMPLE_CARDS[2], SAMPLE_CARDS[3]]
 
   return (
     <>
@@ -39,21 +100,20 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px' }}>
-          {/* Analytics ingestion (per-platform metrics fetch) isn't built yet — see
-              src/lib/queue/worker.ts's analyticsWorker, which is plumbing-only.
-              Showing these as real numbers to a logged-in user would be misleading,
-              so it's labeled until that pipeline exists. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.25)', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: '0.75rem', color: '#FF9933', fontWeight: 600 }}>
-            ✦ Sample data — connect your accounts and publish a few posts to see real analytics here
-          </div>
+          {/* "Posts Published" (the 3rd card) is always real — it's a plain
+              count of your published posts, no analytics pipeline required.
+              The other 4 cards are real once fetchInstagramInsights (see
+              src/lib/social/analytics.ts) has written at least one row for
+              this range — currently Instagram only, 20 min + 24h after each
+              publish. Until then they show clearly-labeled sample numbers
+              instead of pretending there's data that hasn't arrived yet. */}
+          {!hasRealAnalytics && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,153,51,0.08)', border: '1px solid rgba(255,153,51,0.25)', borderRadius: 10, padding: '8px 14px', marginBottom: 16, fontSize: '0.75rem', color: '#FF9933', fontWeight: 600 }}>
+              ✦ Sample data (except Posts Published, which is real) — publish to Instagram and check back in ~20 min to see real reach/engagement here
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
-            {[
-              { label: 'Total Reach',     val: '3.09M', delta: '↑ 18.4% vs last month', up: true,  icon: '📡', color: '#FF9933' },
-              { label: 'Avg. Engagement', val: '6.7%',  delta: '↑ 2.1pp all platforms', up: true,  icon: '💬', color: '#8B5CF6' },
-              { label: 'Posts Published', val: '36',    delta: '↑ 12 vs last month',    up: true,  icon: '📝', color: '#25D366' },
-              { label: 'Watch Hours',     val: '41.2K', delta: '↓ 3.2% — needs fix',   up: false, icon: '⏱', color: '#FBBF24' },
-              { label: 'Story Views',     val: '2.18L', delta: '↑ 41% — best ever!',   up: true,  icon: '👁', color: '#60A5FA' },
-            ].map(m => (
+            {cards.map(m => (
               <div key={m.label} style={{ background: '#12121A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 16px', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' }}>
@@ -61,7 +121,9 @@ export default function DashboardPage() {
                 <div style={{ fontSize: '0.9rem', marginBottom: 8 }}>{m.icon}</div>
                 <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase' as const, color: '#7A7A90', marginBottom: 4 }}>{m.label}</div>
                 <div style={{ fontSize: '1.7rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, color: '#F0F0F8', marginBottom: 6 }}>{m.val}</div>
-                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: m.up ? '#34D399' : '#F87171' }}>{m.delta}</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, color: m.delta == null ? '#5A5A72' : m.up ? '#34D399' : '#F87171' }}>
+                  {m.delta ?? (hasRealAnalytics || m.label === 'Posts Published' ? 'Live' : '')}
+                </div>
               </div>
             ))}
           </div>

@@ -55,10 +55,11 @@ export interface PublishJobData {
 }
 
 export interface AnalyticsJobData {
+  postId: string
+  postPlatformId: string
   workspaceId: string
   socialAccountId: string
   platform: string
-  sinceDate: string
 }
 
 export async function schedulePost(data: PublishJobData, publishAt: Date) {
@@ -72,7 +73,7 @@ export async function publishNow(data: PublishJobData) {
   return job.id
 }
 
-export async function scheduleAnalyticsFetch(data: AnalyticsJobData) {
-  const job = await analyticsQueue.add('fetch', data)
+export async function scheduleAnalyticsFetch(data: AnalyticsJobData, delayMs = 0) {
+  const job = await analyticsQueue.add('fetch', data, { delay: delayMs })
   return job.id
 }

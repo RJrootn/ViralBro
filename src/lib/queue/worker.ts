@@ -9,10 +9,18 @@
 import { Worker, Job } from 'bullmq'
 import { db } from '@/lib/db/client'
 import { publishToplatform } from '@/lib/social/publisher'
+import { fetchInstagramInsights } from '@/lib/social/analytics'
 import type { SocialPlatform } from '@prisma/client'
-import { redisConnection, type PublishJobData, type AnalyticsJobData } from './index'
+import { redisConnection, scheduleAnalyticsFetch, type PublishJobData, type AnalyticsJobData } from './index'
 
 const connection = redisConnection
+
+// First fetch is deliberately delayed — Instagram's Insights API doesn't
+// have numbers to report the instant a post goes live, and a same-second
+// fetch would just record zeros. A second fetch a day later catches reach/
+// engagement that accumulates after the initial burst.
+const ANALYTICS_FIRST_FETCH_DELAY_MS = 20 * 60 * 1000       // 20 minutes
+const ANALYTICS_FOLLOWUP_FETCH_DELAY_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 // ── Roll the parent Post's status up from its PostPlatform children ───────
 // PostStatus has no PARTIAL state, so: all children published -> PUBLISHED;
@@ -91,6 +99,23 @@ export const publishWorker = new Worker<PublishJobData>(
     })
     await recomputePostStatus(postId)
 
+    // Only Instagram insights fetching is implemented (see analytics.ts) —
+    // scheduling a fetch for another platform would just sit in the queue
+    // forever with the analyticsWorker's no-op warning below. Scoping the
+    // schedule call itself to INSTAGRAM keeps that honest instead of
+    // silently queuing work nothing will do.
+    if (platform === 'INSTAGRAM') {
+      const analyticsJob = {
+        postId,
+        postPlatformId: postPlatform.id,
+        workspaceId:    job.data.workspaceId,
+        socialAccountId,
+        platform,
+      }
+      await scheduleAnalyticsFetch(analyticsJob, ANALYTICS_FIRST_FETCH_DELAY_MS)
+      await scheduleAnalyticsFetch(analyticsJob, ANALYTICS_FOLLOWUP_FETCH_DELAY_MS)
+    }
+
     return result
   },
   { connection, concurrency: 5 },
@@ -121,21 +146,39 @@ publishWorker.on('failed', async (job, err) => {
 })
 
 // ── Analytics worker ────────────────────────────────────────────────────
-// Plumbing only. No platform "fetch insights" implementation exists yet
-// anywhere in the codebase (the /api/analytics route only reads Analytics
-// rows that already exist — nothing writes them). Designing that per
-// platform is its own separate task. This just drains the queue safely
-// instead of leaving jobs stuck with nothing consuming them.
+// Instagram is implemented (see analytics.ts) — publishWorker above
+// schedules a fetch here automatically 20 minutes and 24 hours after a
+// successful Instagram publish. Every other platform is still a
+// deliberate no-op: their insights APIs have different auth scopes and
+// response shapes that haven't been built yet, and pretending to fetch
+// them would either error out unpredictably or (worse) silently write
+// zeros that look like real data.
 export const analyticsWorker = new Worker<AnalyticsJobData>(
   'fetch-analytics',
   async (job: Job<AnalyticsJobData>) => {
-    console.warn(
-      `[fetch-analytics] ${job.id} — no fetch implementation yet for ` +
-      `${job.data.platform}, skipping (TODO)`,
-    )
+    if (job.data.platform !== 'INSTAGRAM') {
+      console.warn(
+        `[fetch-analytics] ${job.id} — no fetch implementation yet for ` +
+        `${job.data.platform}, skipping (TODO)`,
+      )
+      return
+    }
+    await fetchInstagramInsights(job.data)
   },
   { connection, concurrency: 3 },
 )
+
+analyticsWorker.on('completed', (job) => {
+  console.log(`[fetch-analytics] ${job.id} done — post ${job.data.postId} / ${job.data.platform}`)
+})
+
+analyticsWorker.on('failed', (job, err) => {
+  if (!job) return
+  console.error(
+    `[fetch-analytics] ${job.id} attempt ${job.attemptsMade} failed — ` +
+    `post ${job.data.postId} / ${job.data.platform}: ${err.message}`,
+  )
+})
 
 console.log('Vyral queue worker started — listening on publish-post + fetch-analytics')
 
