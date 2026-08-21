@@ -19,13 +19,20 @@ const META_APP_ID     = process.env.META_APP_ID!
 const APP_URL         = process.env.NEXT_PUBLIC_APP_URL!
 const CALLBACK_URL    = `${APP_URL}/api/platforms/instagram/callback`
 
+// Meta's OAuth dialog rejects the whole request with "Invalid Scopes" if any
+// listed scope hasn't been added to this app in App Review > Permissions and
+// Features. `pages_manage_posts` (posting to a Page's own feed) and
+// `instagram_manage_insights` (analytics) aren't called anywhere in this
+// codebase yet (publisher.ts only hits /media + /media_publish, which needs
+// instagram_basic + instagram_content_publish + pages_show_list +
+// pages_read_engagement to resolve the linked IG business account) — so they
+// were dropped rather than guessed-fixed. Add them back once they're
+// actually consumed by a feature AND added to the app in the dashboard.
 const SCOPES = [
   'instagram_basic',
   'instagram_content_publish',
-  'instagram_manage_insights',
-  'pages_read_engagement',
-  'pages_manage_posts',
   'pages_show_list',
+  'pages_read_engagement',
 ].join(',')
 
 export async function GET(req: Request) {

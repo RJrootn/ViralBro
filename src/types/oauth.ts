@@ -43,9 +43,8 @@ export const PLATFORM_CONFIG = {
     scopes: [
       'instagram_basic',
       'instagram_content_publish',
-      'instagram_manage_insights',
+      'pages_show_list',
       'pages_read_engagement',
-      'pages_manage_posts',
     ],
     supportsRefresh:  false, // long-lived tokens (60 days)
     tokenLifespanDays: 60,
