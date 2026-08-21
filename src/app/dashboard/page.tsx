@@ -1,110 +1,16 @@
 'use client'
-import { useSession, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Sidebar from '@/components/dashboard/Sidebar'
+import { PLATFORM_COLORS } from '@/lib/constants/platforms'
 
-const PC: Record<string, string> = {
-  instagram: '#E1306C', twitter: '#1DA1F2', linkedin: '#0077B5',
-  youtube: '#FF0000', facebook: '#1877F2', whatsapp: '#25D366',
-}
-
-const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
-
-interface ConnectedAccount {
-  id: string
-  platform: string
-  platformUsername: string
-}
-
-const PLATFORM_LABEL: Record<string, string> = {
-  YOUTUBE: 'YouTube', INSTAGRAM: 'Instagram', TWITTER: 'X/Twitter', LINKEDIN: 'LinkedIn', FACEBOOK: 'Facebook', WHATSAPP: 'WhatsApp',
-}
+const PC = PLATFORM_COLORS
 
 export default function DashboardPage() {
-  const { data: session } = useSession()
   const router = useRouter()
-  const [activePage, setActivePage] = useState('dashboard')
-  const [langIdx, setLangIdx] = useState(0)
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLangIdx(i => (i + 1) % LANGUAGES.length)
-    }, 1800)
-    return () => clearInterval(interval)
-  }, [])
-
-  // Real connected accounts, not the hardcoded fake follower counts this used
-  // to show unconditionally.
-  useEffect(() => {
-    fetch('/api/platforms/connect')
-      .then(res => res.json())
-      .then(data => { if (data.success) setAccounts(data.data.accounts) })
-      .catch(() => {})
-  }, [])
-
-  const nav = (page: string) => {
-    if (page === 'studio') { router.push('/studio'); return }
-    setActivePage(page)
-  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A0A0F', fontFamily: 'system-ui, sans-serif', color: '#F0F0F8', WebkitFontSmoothing: 'antialiased' }}>
-      <aside style={{ width: 220, flexShrink: 0, background: '#12121A', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
-        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BharatFlag />
-            <span style={{ fontWeight: 900, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>
-              Vyral<span style={{ color: '#FF9933' }}>Bro</span>
-            </span>
-            <span style={{ fontSize: '0.58rem', fontWeight: 700, background: 'rgba(37,211,102,0.1)', color: '#25D366', border: '1px solid rgba(37,211,102,0.25)', borderRadius: 20, padding: '2px 7px', minWidth: 36, textAlign: 'center' as const, transition: 'all 0.4s' }}>
-              {LANGUAGES[langIdx]}
-            </span>
-          </div>
-        </div>
-        <div style={{ padding: '8px 0' }}>
-          <SbLabel>Main</SbLabel>
-          <SbItem icon="⊞" label="Dashboard" active={activePage === 'dashboard'} onClick={() => nav('dashboard')} />
-          <SbItem icon="✍️" label="Post Content" badge="NEW" onClick={() => nav('studio')} />
-          <SbItem icon="📅" label="Scheduler" dot="#25D366" onClick={() => nav('scheduler')} />
-          <SbItem icon="📚" label="Content Library" onClick={() => nav('library')} />
-          <SbItem icon="📊" label="Analytics" onClick={() => nav('analytics')} />
-          <SbLabel>Workspace</SbLabel>
-          <SbItem icon="👥" label="Team" badge2="2" onClick={() => nav('team')} />
-          <SbItem icon="💬" label="Comments" onClick={() => nav('comments')} />
-          <SbItem icon="🔔" label="Notifications" onClick={() => nav('notifications')} />
-          <SbItem icon="⚙️" label="Settings" onClick={() => nav('settings')} />
-        </div>
-        <div style={{ padding: '12px 12px 8px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 'auto' }}>
-          <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#5A5A72', marginBottom: 10 }}>Connected Channels</div>
-          {accounts.length === 0 && (
-            <div style={{ fontSize: '0.72rem', color: '#5A5A72', marginBottom: 8 }}>None connected yet</div>
-          )}
-          {accounts.map(ch => (
-            <div key={ch.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: PC[ch.platform.toLowerCase()] ?? '#7A7A90', boxShadow: `0 0 5px ${PC[ch.platform.toLowerCase()] ?? '#7A7A90'}`, flexShrink: 0 }} />
-              <span style={{ fontSize: '0.78rem', fontWeight: 500, flex: 1 }}>{PLATFORM_LABEL[ch.platform] ?? ch.platform}</span>
-              <span style={{ fontSize: '0.72rem', color: '#7A7A90' }}>@{ch.platformUsername}</span>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399' }} />
-            </div>
-          ))}
-          <div onClick={() => router.push('/settings')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', marginTop: 6, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 9, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#5A5A72' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF9933'; e.currentTarget.style.color = '#FF9933' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#5A5A72' }}>
-            + Add Channel
-          </div>
-        </div>
-        <div style={{ padding: '12px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 9 }}>
-          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg,#FF9933,#138808)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-            {session?.user?.name?.charAt(0) ?? 'R'}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session?.user?.name ?? 'Creator'}</div>
-            <div style={{ fontSize: '0.65rem', color: '#5A5A72' }}>Owner</div>
-          </div>
-          <span style={{ fontSize: '0.7rem', color: '#5A5A72', cursor: 'pointer' }} onClick={() => signOut({ callbackUrl: '/login' })}>⏻</span>
-        </div>
-      </aside>
+      <Sidebar active="dashboard" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0E0E16' }}>
         <div style={{ height: 54, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
@@ -211,7 +117,7 @@ export default function DashboardPage() {
             <div style={{ background: '#12121A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700 }}>Top Performing Content</div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FF9933', cursor: 'pointer' }}>View library →</div>
+                <div onClick={() => router.push('/dashboard/library')} style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FF9933', cursor: 'pointer' }}>View library →</div>
               </div>
               <div style={{ padding: '8px 18px' }}>
                 {[
@@ -220,7 +126,7 @@ export default function DashboardPage() {
                   { title: 'Morning in Manali — Vibe Story', plats: ['instagram', 'twitter'], reach: '55K', delta: '↑ 28%', up: true, icon: '✨' },
                   { title: 'How I Edit Videos in 2 Hours', plats: ['youtube'], reach: '1.45L', delta: '→ Stable', up: null, icon: '✂️' },
                 ].map((p, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none', cursor: 'pointer' }}>
+                  <div key={i} onClick={() => router.push('/dashboard/library')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none', cursor: 'pointer' }}>
                     <div style={{ width: 40, height: 40, borderRadius: 9, background: '#1E1E28', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{p.icon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{p.title}</div>
@@ -239,7 +145,7 @@ export default function DashboardPage() {
             <div style={{ background: '#12121A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700 }}>Upcoming Queue</div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FF9933', cursor: 'pointer' }}>Open calendar →</div>
+                <div onClick={() => router.push('/dashboard/scheduler')} style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FF9933', cursor: 'pointer' }}>Open calendar →</div>
               </div>
               <div style={{ padding: '8px 18px' }}>
                 {[
@@ -248,7 +154,7 @@ export default function DashboardPage() {
                   { title: 'Backpacking Essentials — What I Pack', time: 'Tomorrow · 10:00 AM IST', tags: [{ l: 'YouTube', c: '#FF0000' }, { l: 'X', c: '#1DA1F2' }], status: 'scheduled', icon: '🎒' },
                   { title: 'Hyderabad Street Food — Reel', time: 'May 19 · 12:00 PM IST', tags: [{ l: 'Instagram', c: '#E1306C' }], status: 'draft', icon: '🍜' },
                 ].map((q, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '10px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none', cursor: 'pointer' }}>
+                  <div key={i} onClick={() => router.push('/dashboard/scheduler')} style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '10px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.06)' : 'none', cursor: 'pointer' }}>
                     <div style={{ width: 38, height: 38, borderRadius: 8, background: '#1E1E28', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{q.icon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>{q.title}</div>
@@ -288,24 +194,6 @@ export default function DashboardPage() {
   )
 }
 
-function SbLabel({ children }: { children: string }) {
-  return <div style={{ padding: '16px 16px 6px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#3A3A52' }}>{children}</div>
-}
-
-function SbItem({ icon, label, active, badge, badge2, dot, onClick }: { icon: string; label: string; active?: boolean; badge?: string; badge2?: string; dot?: string; onClick?: () => void }) {
-  return (
-    <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', margin: '1px 6px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500, color: active ? '#FF9933' : '#7A7A90', background: active ? 'rgba(255,153,51,0.1)' : 'transparent', transition: 'all 0.15s' }}
-      onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = '#18181F'; (e.currentTarget as HTMLElement).style.color = '#F0F0F8' } }}
-      onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#7A7A90' } }}>
-      <span style={{ fontSize: '0.9rem', width: 16, textAlign: 'center' as const }}>{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
-      {badge && <span style={{ fontSize: '0.58rem', fontWeight: 700, background: '#FF9933', color: '#fff', padding: '1px 6px', borderRadius: 20 }}>{badge}</span>}
-      {badge2 && <span style={{ fontSize: '0.58rem', fontWeight: 700, background: '#34D399', color: '#fff', padding: '1px 6px', borderRadius: 20 }}>{badge2}</span>}
-      {dot && <div style={{ width: 6, height: 6, borderRadius: '50%', background: dot }} />}
-    </div>
-  )
-}
-
 function TbBtn({ label }: { label: string }) {
   return (
     <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: '#18181F', fontSize: '0.78rem', fontWeight: 600, color: '#F0F0F8', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -313,23 +201,5 @@ function TbBtn({ label }: { label: string }) {
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.11)'}>
       {label} ▾
     </button>
-  )
-}
-
-function BharatFlag() {
-  return (
-    <svg width="28" height="20" viewBox="0 0 30 21" style={{ borderRadius: 3, boxShadow: '0 2px 8px rgba(0,0,0,0.5)', flexShrink: 0, display: 'block' }}>
-      <rect x="0" y="0" width="30" height="7" fill="#FF9933" />
-      <rect x="0" y="7" width="30" height="7" fill="#FFFFFF" />
-      <rect x="0" y="14" width="30" height="7" fill="#138808" />
-      <circle cx="15" cy="10.5" r="3" fill="none" stroke="#000080" strokeWidth="0.6" />
-      <circle cx="15" cy="10.5" r="0.8" fill="#000080" />
-      <g stroke="#000080" strokeWidth="0.4">
-        <line x1="15" y1="7.5" x2="15" y2="8.8" /><line x1="15" y1="12.2" x2="15" y2="13.5" />
-        <line x1="12" y1="10.5" x2="13.3" y2="10.5" /><line x1="16.7" y1="10.5" x2="18" y2="10.5" />
-        <line x1="12.88" y1="8.38" x2="13.8" y2="9.3" /><line x1="16.2" y1="11.7" x2="17.12" y2="12.62" />
-        <line x1="17.12" y1="8.38" x2="16.2" y2="9.3" /><line x1="13.8" y1="11.7" x2="12.88" y2="12.62" />
-      </g>
-    </svg>
   )
 }

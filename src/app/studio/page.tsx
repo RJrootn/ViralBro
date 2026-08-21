@@ -291,8 +291,8 @@ export default function StudioPage() {
           {[
             { icon: '⊞', label: 'Dashboard', path: '/dashboard' },
             { icon: '✍️', label: 'Post Content', active: true },
-            { icon: '📅', label: 'Scheduler', path: '/dashboard' },
-            { icon: '📚', label: 'Content Library', path: '/dashboard' },
+            { icon: '📅', label: 'Scheduler', path: '/dashboard/scheduler' },
+            { icon: '📚', label: 'Content Library', path: '/dashboard/library' },
             { icon: '📊', label: 'Analytics', path: '/dashboard' },
             { icon: '🔌', label: 'Settings', path: '/settings' },
           ].map(item => (
