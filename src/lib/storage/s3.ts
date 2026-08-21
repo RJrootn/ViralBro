@@ -6,13 +6,19 @@
 // because serverless function request bodies are size-capped well below a
 // typical Reels-length video.
 //
-// Required env vars (Netlify + Railway):
-//   AWS_ACCESS_KEY_ID
-//   AWS_SECRET_ACCESS_KEY
-//   AWS_REGION            e.g. "ap-south-1"
-//   AWS_S3_BUCKET         bucket name, must allow public-read on the objects
-//                          this uploads (see bucket policy note below) since
-//                          Meta/X/LinkedIn's APIs fetch media by public URL.
+// Required env vars (Netlify):
+//   VYRALBRO_AWS_ACCESS_KEY_ID
+//   VYRALBRO_AWS_SECRET_ACCESS_KEY
+//   VYRALBRO_AWS_REGION       e.g. "ap-south-1"
+//   VYRALBRO_AWS_S3_BUCKET    bucket name, must allow public-read on the
+//                             objects this uploads (see bucket policy note
+//                             below) since Meta/X/LinkedIn's APIs fetch
+//                             media by public URL.
+//
+// Prefixed with VYRALBRO_ rather than the plain AWS_* names because Netlify
+// reserves AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION for its own
+// Lambda/Functions runtime — setting them directly is rejected in the
+// Netlify UI ("is a reserved key name").
 //
 // Bucket policy: the bucket needs a policy granting `s3:GetObject` on
 // `arn:aws:s3:::<bucket>/uploads/*` to `"Principal": "*"` (public read for
@@ -24,14 +30,14 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl }               from '@aws-sdk/s3-request-presigner'
 
-const REGION = process.env.AWS_REGION!
-const BUCKET = process.env.AWS_S3_BUCKET!
+const REGION = process.env.VYRALBRO_AWS_REGION!
+const BUCKET = process.env.VYRALBRO_AWS_S3_BUCKET!
 
 const s3 = new S3Client({
   region: REGION,
   credentials: {
-    accessKeyId:     process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId:     process.env.VYRALBRO_AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.VYRALBRO_AWS_SECRET_ACCESS_KEY!,
   },
 })
 
