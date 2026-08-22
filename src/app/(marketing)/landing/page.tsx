@@ -364,12 +364,12 @@ export default function LandingPage() {
           <span style={{ fontSize: '0.72rem', color: '#55556A' }}>· India&apos;s Creator OS</span>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
-          {['Privacy', 'Terms', 'Contact'].map(item => (
-            <span key={item} style={{ fontSize: '0.78rem', color: '#55556A', cursor: 'pointer', transition: 'color 0.2s' }}
+          {[{ label: 'Privacy', href: '/privacy' }, { label: 'Terms', href: '/terms' }, { label: 'Contact', href: 'mailto:rj@rootn.ai' }].map(item => (
+            <a key={item.label} href={item.href} style={{ fontSize: '0.78rem', color: '#55556A', textDecoration: 'none', transition: 'color 0.2s' }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#F2F2F8'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#55556A'}>
-              {item}
-            </span>
+              {item.label}
+            </a>
           ))}
         </div>
         <div style={{ fontSize: '0.72rem', color: '#55556A' }}>© 2025 VyralBro · Made in Bharat 🇮🇳</div>
