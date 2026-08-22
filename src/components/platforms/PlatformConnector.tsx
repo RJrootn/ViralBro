@@ -3,10 +3,11 @@
 // The "Connect Accounts" UI on the Settings page
 // Shows connection status, connect/disconnect buttons, token expiry
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import toast                   from 'react-hot-toast'
 import type { ConnectedAccount, SocialPlatform } from '@/types/oauth'
 import { invalidateConnectedAccounts } from '@/lib/hooks/useConnectedAccounts'
+import { explainOAuthError } from '@/lib/oauth/errorMessages'
 
 // ── Platform display config ───────────────────────────────────────────────
 const PLATFORMS: {
@@ -89,24 +90,9 @@ export function PlatformConnector() {
   const [loading,       setLoading]       = useState(true)
   const [disconnecting, setDisconnecting] = useState<SocialPlatform | null>(null)
   const [refreshing,    setRefreshing]    = useState<SocialPlatform | null>(null)
+  const [preflightPlatform, setPreflightPlatform] = useState<typeof PLATFORMS[number] | null>(null)
 
-  useEffect(() => {
-    fetchAccounts()
-    // Check for success/error from OAuth callback
-    handleOAuthReturn()
-  }, [])
-
-  async function fetchAccounts() {
-    try {
-      const res  = await fetch('/api/platforms/connect')
-      const data = await res.json()
-      if (data.success) setAccounts(data.data.accounts)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function handleOAuthReturn() {
+  const handleOAuthReturn = useCallback(() => {
     const params   = new URLSearchParams(window.location.search)
     const platform = params.get('platform')
     const success  = params.get('success')
@@ -120,8 +106,41 @@ export function PlatformConnector() {
       fetchAccounts()
       invalidateConnectedAccounts() // sidebar's cached list should show this immediately, not on its next remount
     } else if (platform && error) {
-      toast.error(`${platform} connection failed: ${decodeURIComponent(error)}`)
+      // Plain-English explanation instead of raw error codes/API text — see
+      // src/lib/oauth/errorMessages.ts for why (a customer can't act on
+      // "no_instagram_business_account" the way they can on a real
+      // explanation + next step).
+      const explained = explainOAuthError(platform, decodeURIComponent(error))
+      toast.error(
+        <div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>{explained.headline}</div>
+          <div style={{ fontSize: '0.85em', opacity: 0.9 }}>{explained.detail}</div>
+          {explained.linkHref && (
+            <a href={explained.linkHref} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: 6, fontSize: '0.85em', fontWeight: 600, textDecoration: 'underline' }}>
+              {explained.linkText}
+            </a>
+          )}
+        </div>,
+        { duration: 10000 }
+      )
       window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAccounts()
+    // Check for success/error from OAuth callback
+    handleOAuthReturn()
+  }, [handleOAuthReturn])
+
+  async function fetchAccounts() {
+    try {
+      const res  = await fetch('/api/platforms/connect')
+      const data = await res.json()
+      if (data.success) setAccounts(data.data.accounts)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -319,12 +338,21 @@ export function PlatformConnector() {
                     </button>
                   </>
                 ) : isLive ? (
-                  <a
-                    href={plat.connectPath}
-                    className="btn-saffron flex-1 text-center text-xs py-2.5"
-                  >
-                    Connect {plat.name}
-                  </a>
+                  plat.id === 'INSTAGRAM' ? (
+                    <button
+                      onClick={() => setPreflightPlatform(plat)}
+                      className="btn-saffron flex-1 text-center text-xs py-2.5"
+                    >
+                      Connect {plat.name}
+                    </button>
+                  ) : (
+                    <a
+                      href={plat.connectPath}
+                      className="btn-saffron flex-1 text-center text-xs py-2.5"
+                    >
+                      Connect {plat.name}
+                    </a>
+                  )
                 ) : (
                   <button
                     disabled
@@ -352,6 +380,66 @@ export function PlatformConnector() {
           <span className="text-white/30">— Connect at least one to start publishing</span>
         )}
       </div>
+
+      {/* Instagram pre-flight check — catches the single most common dead-end
+          we hit ourselves (see claude/vyralbro-customer-onboarding-notes.md):
+          Instagram OAuth silently fails with no_instagram_business_account
+          if the account isn't a Business/Creator account linked to a
+          Facebook Page. Confirming this before the OAuth round-trip saves a
+          customer from a confusing error after the fact. */}
+      {preflightPlatform && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreflightPlatform(null)}
+        >
+          <div
+            className="surface-card max-w-md w-full p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                style={{ background: preflightPlatform.bg }}>
+                {preflightPlatform.emoji}
+              </div>
+              <div className="font-semibold text-base">Before you connect {preflightPlatform.name}</div>
+            </div>
+
+            <p className="text-sm text-white/70">
+              VyralBro can only publish to Instagram <strong>Business or Creator</strong> accounts that
+              are linked to a Facebook Page you manage — not personal Instagram accounts. Two quick checks:
+            </p>
+
+            <ul className="text-sm text-white/60 space-y-2 list-disc list-inside">
+              <li>Your Instagram account is switched to Business or Creator (Settings → Account type)</li>
+              <li>It&apos;s linked to a Facebook Page you have admin access to</li>
+            </ul>
+
+            <a
+              href="https://help.instagram.com/502981923235522"
+              target="_blank" rel="noopener noreferrer"
+              className="text-sm font-semibold underline"
+              style={{ color: preflightPlatform.color }}
+            >
+              How do I check / switch this? →
+            </a>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setPreflightPlatform(null)}
+                className="flex-1 text-xs font-semibold py-2.5 rounded-xl border border-white/10 bg-surface-2 text-white/60 hover:text-white transition-all"
+              >
+                Not yet — let me check
+              </button>
+              <a
+                href={preflightPlatform.connectPath}
+                className="btn-saffron flex-1 text-center text-xs py-2.5"
+              >
+                Yes, continue →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
