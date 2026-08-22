@@ -109,7 +109,7 @@ export default function LandingPage() {
           </form>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(19,136,8,0.1)', border: '1px solid rgba(19,136,8,0.3)', borderRadius: 12, padding: '14px 24px', marginBottom: 20, fontSize: '0.92rem', color: '#25D366', fontWeight: 600 }}>
-            ✓ You're on the list! We'll reach out when VyralBro goes live.
+            ✓ You&apos;re on the list! We&apos;ll reach out when VyralBro goes live.
           </div>
         )}
         {waitlistError && (
@@ -251,7 +251,7 @@ export default function LandingPage() {
       <section style={{ position: 'relative', zIndex: 1, padding: '80px 5%', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>How it works</div>
-          <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em', marginBottom: 56 }}>Three steps. That's it.</h2>
+          <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em', marginBottom: 56 }}>Three steps. That&apos;s it.</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 40 }}>
             {[
               { num: '01', title: 'Write your idea', desc: 'Paste your raw idea, story, or announcement. Just your words — no formatting needed.' },
@@ -329,7 +329,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: 640, margin: '0 auto' }}>
           <div style={{ fontSize: '3rem', marginBottom: 24 }}>🇮🇳</div>
           <h2 style={{ fontWeight: 900, fontSize: 'clamp(2rem, 4vw, 3rem)', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 20 }}>
-            India's Creator OS<br />is here.
+            India&apos;s Creator OS<br />is here.
           </h2>
           <p style={{ fontSize: '1rem', color: '#8585A0', lineHeight: 1.7, marginBottom: 40 }}>
             Be one of the first Indian creators to try it. Free to start. No credit card required.
@@ -346,7 +346,7 @@ export default function LandingPage() {
             </form>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(19,136,8,0.1)', border: '1px solid rgba(19,136,8,0.3)', borderRadius: 12, padding: '14px 24px', marginBottom: 16, fontSize: '0.92rem', color: '#25D366', fontWeight: 600 }}>
-              ✓ You're on the list!
+              ✓ You&apos;re on the list!
             </div>
           )}
           {waitlistError && (
@@ -361,7 +361,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
           <span style={{ fontWeight: 900, fontSize: '1rem' }}>VyralBro</span>
-          <span style={{ fontSize: '0.72rem', color: '#55556A' }}>· India's Creator OS</span>
+          <span style={{ fontSize: '0.72rem', color: '#55556A' }}>· India&apos;s Creator OS</span>
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
           {['Privacy', 'Terms', 'Contact'].map(item => (

@@ -94,7 +94,7 @@ export default function SchedulerPage() {
               <div style={{ fontSize: '1.6rem', marginBottom: 10 }}>📅</div>
               <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 6 }}>Nothing scheduled</div>
               <div style={{ fontSize: '0.78rem', color: '#7A7A90', marginBottom: 16 }}>
-                Schedule a post from Studio and it'll show up here in order.
+                Schedule a post from Studio and it&apos;ll show up here in order.
               </div>
               <button onClick={() => router.push('/studio')}
                 style={{ padding: '8px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.78rem', fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>

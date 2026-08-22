@@ -92,7 +92,7 @@ export default function ContentLibraryPage() {
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#FF9933 33.33%,#fff 33.33% 66.66%,#138808 66.66%)' }} />
           <div>
             <div style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>Content Library</div>
-            <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>Every post you've created, drafted, or published</div>
+            <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>Every post you&apos;ve created, drafted, or published</div>
           </div>
           <button onClick={() => router.push('/studio')}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.78rem', fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 2px 12px rgba(255,153,51,0.3)', fontFamily: 'inherit' }}>
