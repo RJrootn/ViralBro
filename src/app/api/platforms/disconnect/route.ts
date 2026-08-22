@@ -6,6 +6,7 @@ import { NextResponse }       from 'next/server'
 import { withErrorHandler, ok, err } from '@/lib/api'
 import { requireWorkspace }   from '@/lib/auth/session'
 import { db }                 from '@/lib/db/client'
+import { encryptToken }       from '@/lib/tokens/encrypt'
 import type { SocialPlatform } from '@prisma/client'
 
 const VALID_PLATFORMS: SocialPlatform[] = [
@@ -34,9 +35,25 @@ export const DELETE = withErrorHandler(async (req) => {
     console.warn(`[Disconnect] Token revocation failed for ${platform}:`, e)
   }
 
-  // Hard delete from DB (user can reconnect anytime)
-  await db.socialAccount.delete({
+  // Soft-disconnect, not a hard delete: a real disconnect that happens after
+  // the account has ever published (i.e. every non-trivial case) leaves
+  // PostPlatform rows pointing at this SocialAccount, and that relation has
+  // no onDelete rule — Postgres rejects a hard delete with a foreign-key
+  // violation, which surfaced as an unhandled 500 here. Marking the row
+  // inactive and wiping the token achieves the same user-facing outcome
+  // (no longer "connected", nothing usable left behind) without touching
+  // publish history. GET /api/platforms/connect already filters on
+  // isActive: true for the "connected channels" list, and every OAuth
+  // callback's upsert sets isActive: true again on reconnect, so this is a
+  // drop-in swap — nothing else needs to change to respect it.
+  await db.socialAccount.update({
     where: { workspaceId_platform: { workspaceId: workspace.id, platform } },
+    data: {
+      isActive:      false,
+      accessToken:   encryptToken(''),
+      refreshToken:  null,
+      tokenExpiresAt: null,
+    },
   })
 
   return ok({ disconnected: true, platform })
