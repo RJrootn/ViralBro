@@ -41,14 +41,30 @@ export async function applyCapturedPayment(orderId: string, paymentId: string): 
     data: { plan, planExpiresAt: addMonths(new Date(), 1) },
   })
 
-  const toAdd = PLAN_LIMITS[plan].aiCredits
+  // Reset (not increment) to the new plan's cap and restart the credit
+  // cycle from now — matches "unused credits do not roll over between
+  // billing cycles" (Terms of Service, and the pricing page). Incrementing
+  // on every renewal let a balance grow indefinitely across cycles, which
+  // is exactly what left RJ's account sitting on a balance permanently
+  // above any plan's cap and made the "credits used" display look broken.
+  const cap = PLAN_LIMITS[plan].aiCredits
+  const nextReset = addMonths(new Date(), 1)
   await db.$transaction(async (tx) => {
+    const before = await tx.user.findUnique({
+      where: { id: payment.userId },
+      select: { aiCreditBalance: true },
+    })
     const updatedUser = await tx.user.update({
       where: { id: payment.userId },
-      data:  { aiCreditBalance: { increment: toAdd } },
+      data:  { aiCreditBalance: cap, creditsResetAt: nextReset },
     })
     await tx.aiCredit.create({
-      data: { userId: payment.userId, amount: toAdd, reason: 'plan_monthly', balance: updatedUser.aiCreditBalance },
+      data: {
+        userId:  payment.userId,
+        amount:  cap - (before?.aiCreditBalance ?? 0),
+        reason:  'plan_monthly',
+        balance: updatedUser.aiCreditBalance,
+      },
     })
   })
 

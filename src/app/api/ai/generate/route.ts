@@ -3,11 +3,13 @@
 
 import { z }                     from 'zod'
 import { Prisma }                from '@prisma/client'
+import { startOfMonth }          from 'date-fns'
 import { withErrorHandler, ok, err, PLAN_LIMITS } from '@/lib/api'
 import { requireWorkspace }      from '@/lib/auth/session'
 import { generateContent }       from '@/lib/ai/generate'
+import { ensureFreshCredits }    from '@/lib/billing/credits'
 import { db }                    from '@/lib/db/client'
-import type { SocialPlatform }   from '@prisma/client'
+import type { SocialPlatform, Plan } from '@prisma/client'
 
 const schema = z.object({
   rawContent: z.string().min(10).max(5000),
@@ -52,6 +54,29 @@ export const POST = withErrorHandler(async (req) => {
       402,
     )
   }
+
+  // Hard guardrail, not just a publish-time one: once an account is already
+  // at its monthly post cap, don't let it keep generating either. Before
+  // this, generation was only gated by credits/platform-count, so a
+  // capped-out user could keep pulling polished, ready-to-copy content out
+  // of the AI for free even though publishing it through us was already
+  // blocked — the real product only holds together if the value we charge
+  // for is actually gated, not just the "publish" button.
+  if (limits.postsPerMonth !== -1) {
+    const postsThisMonth = await db.post.count({
+      where: { workspaceId: workspace.id, createdAt: { gte: startOfMonth(new Date()) } },
+    })
+    if (postsThisMonth >= limits.postsPerMonth) {
+      return err(
+        `You've hit your plan's ${limits.postsPerMonth} posts/month limit. Upgrade to keep generating this month.`,
+        402,
+      )
+    }
+  }
+
+  // Lazily true-up the credit balance to this cycle's cap before spending
+  // from it — see src/lib/billing/credits.ts.
+  await ensureFreshCredits(session.user.id, session.user.plan as Plan)
 
   const used = input.platforms.length
 

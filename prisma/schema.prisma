@@ -87,6 +87,15 @@ model User {
   // never be double-spent. AiCredit rows remain the audit trail.
   aiCreditBalance Int @default(0)
 
+  // When this user's AI-credit cycle next rolls over. NULL means "never
+  // reset yet" — treated as due-now, so every existing row true-ups to the
+  // plan's cap on its very next read. Nothing ever reset this before (see
+  // src/lib/billing/credits.ts), which is why a user's balance could sit
+  // permanently above their plan's cap (e.g. the one-time 50-credit signup
+  // bonus, still above today's 25-credit FREE cap) and the "X/Y credits
+  // used" display would look stuck even while real usage was happening.
+  creditsResetAt DateTime?
+
   // Relations
   accounts      Account[]
   sessions      Session[]

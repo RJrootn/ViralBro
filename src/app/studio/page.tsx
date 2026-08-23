@@ -72,8 +72,17 @@ const MEDIA_TYPE_OPTIONS = [
 export default function StudioPage() {
   const router = useRouter()
   const { data: session } = useSession()
-  const { data: usageData } = useUsage()
+  const { data: usageData, refresh: refreshUsage } = useUsage()
   const isBrandedPlan = usageData?.plan === 'FREE' || usageData?.plan === 'CREATOR'
+  // Real guardrail, not just a warning: once the account is already at its
+  // monthly post cap, Generate is disabled outright rather than letting
+  // someone burn credits producing polished content they can only copy out
+  // of the app by hand (the server enforces this too — see
+  // /api/ai/generate/route.ts — this is just what makes it visible and
+  // un-clickable before that round trip, instead of after it).
+  const atPostCap = !!usageData
+    && usageData.limits.postsPerMonth !== -1
+    && usageData.usage.postsThisMonth >= usageData.limits.postsPerMonth
   const [raw, setRaw] = useState('Sharing 5 lessons from building a profitable SaaS from ₹0 in India — bootstrapped, no VC, profitable in 6 months. Indian B2B is different. Pricing, trust, first customers — here\'s what nobody tells you.')
   const [tone, setTone] = useState('Authentic')
   const [format, setFormat] = useState('Listicle')
@@ -223,6 +232,12 @@ export default function StudioPage() {
     if (!raw.trim()) { showToast('Write your idea first'); return }
     if (platforms.length === 0) { showToast('Pick at least one platform'); return }
     if (languages.length === 0) { showToast('Pick at least one language'); return }
+    if (atPostCap) {
+      const msg = `You've hit your plan's ${usageData!.limits.postsPerMonth} posts/month limit. Upgrade to keep generating this month.`
+      setLimitBanner(msg)
+      showToast(msg)
+      return
+    }
     setLoading(true)
     setPreviews({})
     setSaved(false)
@@ -312,6 +327,10 @@ export default function StudioPage() {
     if (limitHit) setLimitBanner(limitHit)
     setLoading(false)
     setGenProgress(null)
+    // Credits (and, if this pushed anyone over, the post-cap gate) may have
+    // just changed — refetch so the sidebar meter and the Generate button's
+    // disabled state reflect reality without needing a page reload.
+    refreshUsage()
   }
 
   // Build the /api/posts payload from whatever's been generated, restricted to
@@ -416,6 +435,10 @@ export default function StudioPage() {
       showToast('Error connecting to the server')
     } finally {
       if (publishNow) setPublishing(false)
+      // A successful publish/draft-save changes postsThisMonth — refetch so
+      // the sidebar meter and the Generate button's post-cap gate update
+      // immediately instead of only after a page reload.
+      refreshUsage()
     }
   }
 
@@ -628,12 +651,14 @@ export default function StudioPage() {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' as const }}>
-            <button onClick={generate} disabled={loading}
-              style={{ position: 'relative', padding: '11px 26px', borderRadius: 12, border: 'none', background: loading ? '#333' : 'linear-gradient(135deg,#FF9933,#FF6B00)', color: '#fff', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, boxShadow: loading ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}
-              onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(255,153,51,0.35)' } }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = loading ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}>
+            <button onClick={generate} disabled={loading || atPostCap}
+              title={atPostCap ? `You've hit your plan's ${usageData?.limits.postsPerMonth} posts/month limit — upgrade to keep generating` : undefined}
+              style={{ position: 'relative', padding: '11px 26px', borderRadius: 12, border: 'none', background: (loading || atPostCap) ? '#333' : 'linear-gradient(135deg,#FF9933,#FF6B00)', color: atPostCap ? '#8585A0' : '#fff', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 700, cursor: (loading || atPostCap) ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, boxShadow: (loading || atPostCap) ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}
+              onMouseEnter={e => { if (!loading && !atPostCap) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(255,153,51,0.35)' } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = (loading || atPostCap) ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}>
               {loading
                 ? <><Spinner /> {genProgress && genProgress.total > 1 ? `Adapting… (${genProgress.done}/${genProgress.total} languages)` : 'Adapting for Bharat…'}</>
+                : atPostCap ? <>🔒 Upgrade to generate more</>
                 : <>✦ Generate with AI</>}
             </button>
 
@@ -650,6 +675,15 @@ export default function StudioPage() {
               </>
             )}
           </div>
+
+          {atPostCap && (
+            <div style={{ fontSize: '0.78rem', color: '#FF9933', fontWeight: 600 }}>
+              🔒 You&apos;ve used all {usageData?.limits.postsPerMonth} posts this month, so generating is paused too — otherwise you could copy content out without ever publishing through us.{' '}
+              <span onClick={() => router.push('/settings?tab=billing')} style={{ color: '#FF9933', cursor: 'pointer', textDecoration: 'underline' }}>
+                Upgrade to keep going →
+              </span>
+            </div>
+          )}
 
           {isBrandedPlan && (
             <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>
