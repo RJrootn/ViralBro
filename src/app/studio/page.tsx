@@ -403,7 +403,12 @@ export default function StudioPage() {
           setSaved(true)
         }
       } else if (res.status === 402) {
-        setLimitBanner(data.error ?? 'Plan limit reached')
+        // Same fix as generate(): a plan-limit failure here must also toast,
+        // not just set the (scrollable, easy-to-miss) LimitBanner — otherwise
+        // "Publish All" can silently do nothing with zero visible feedback.
+        const msg = data.error ?? 'Plan limit reached'
+        setLimitBanner(msg)
+        showToast(msg)
       } else {
         showToast(data.error ?? 'Something went wrong')
       }
