@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import UsageMeter from '@/components/billing/UsageMeter'
 import LimitBanner from '@/components/billing/LimitBanner'
+import { useUsage } from '@/lib/hooks/useUsage'
 
 const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
@@ -71,6 +72,8 @@ const MEDIA_TYPE_OPTIONS = [
 export default function StudioPage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { data: usageData } = useUsage()
+  const isBrandedPlan = usageData?.plan === 'FREE' || usageData?.plan === 'CREATOR'
   const [raw, setRaw] = useState('Sharing 5 lessons from building a profitable SaaS from ₹0 in India — bootstrapped, no VC, profitable in 6 months. Indian B2B is different. Pricing, trust, first customers — here\'s what nobody tells you.')
   const [tone, setTone] = useState('Authentic')
   const [format, setFormat] = useState('Listicle')
@@ -530,6 +533,15 @@ export default function StudioPage() {
               </>
             )}
           </div>
+
+          {isBrandedPlan && (
+            <div style={{ fontSize: '0.72rem', color: '#5A5A72' }}>
+              Free &amp; Creator plan posts include a small &ldquo;Made with VyralBro&rdquo; credit at the end of the caption.{' '}
+              <span onClick={() => router.push('/settings?tab=billing')} style={{ color: '#FF9933', cursor: 'pointer', fontWeight: 600 }}>
+                Upgrade to Pro to remove it →
+              </span>
+            </div>
+          )}
         </div>
 
         {/* RIGHT: Previews */}

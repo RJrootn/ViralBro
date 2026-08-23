@@ -72,8 +72,11 @@ export default function BillingPanel() {
         <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{currentPlan}</div>
         {data && (
           <div style={{ fontSize: '0.8rem', color: '#7A7A90', marginTop: 4 }}>
-            {data.usage.postsThisMonth}{data.limits.postsPerMonth !== -1 ? `/${data.limits.postsPerMonth}` : ''} posts this month ·{' '}
-            {data.usage.aiCreditBalance}/{data.limits.aiCredits} AI credits left
+            {/* Both figures read "used / limit" consistently — see UsageMeter.tsx
+                for why that matters (posts and credits used to use opposite
+                conventions and looked identical, which read as a bug to RJ). */}
+            {data.usage.postsThisMonth}{data.limits.postsPerMonth !== -1 ? `/${data.limits.postsPerMonth}` : ''} posts used this month ·{' '}
+            {data.limits.aiCredits - data.usage.aiCreditBalance}/{data.limits.aiCredits} AI credits used
             {data.planExpiresAt && ` · renews ${new Date(data.planExpiresAt).toLocaleDateString()}`}
           </div>
         )}
@@ -110,7 +113,14 @@ export default function BillingPanel() {
                 {card.limits.postsPerMonth === -1 ? 'Unlimited posts/mo' : `${card.limits.postsPerMonth} posts/mo`}<br />
                 {card.limits.aiCredits} AI credits<br />
                 {card.limits.platforms} platforms<br />
-                {card.limits.teamMembers} team member{card.limits.teamMembers > 1 ? 's' : ''}
+                {card.limits.teamMembers} team member{card.limits.teamMembers > 1 ? 's' : ''}<br />
+                {/* Transparency on the one thing that isn't a quota number —
+                    Free/Creator posts carry a small VyralBro credit; Pro and
+                    above publish clean. Stated here plainly rather than left
+                    for someone to discover on their own live post. */}
+                {card.key === 'FREE' || card.key === 'CREATOR'
+                  ? <span style={{ color: '#7A7A90' }}>Includes &ldquo;Made with VyralBro&rdquo; credit</span>
+                  : <span style={{ color: '#25D366' }}>✓ No VyralBro branding</span>}
               </div>
               {card.key === 'FREE' ? (
                 <div style={{ fontSize: '0.76rem', color: '#5A5A72', textAlign: 'center' as const, padding: '9px 0' }}>

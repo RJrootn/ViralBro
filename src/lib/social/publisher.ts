@@ -6,6 +6,7 @@ import { getValidToken }                    from '@/lib/tokens/refresh'
 import { db }                               from '@/lib/db/client'
 import { isVideoUrl }                       from '@/lib/storage/s3'
 import type { SocialPlatform, PostMediaType } from '@prisma/client'
+import { shouldApplyBranding, applyBranding } from '@/lib/billing/branding'
 
 export interface PublishResult {
   success:        boolean
@@ -27,13 +28,24 @@ export async function publishToplatform(
 
   const account = await db.socialAccount.findUnique({
     where: { id: socialAccountId },
-    select: { platformUserId: true, platformUsername: true },
+    select: {
+      platformUserId: true,
+      platformUsername: true,
+      workspace: { select: { user: { select: { plan: true } } } },
+    },
   })
   if (!account) return { success: false, error: 'Social account not found' }
 
-  const fullText = hashtags.length
+  let fullText = hashtags.length
     ? `${text}\n\n${hashtags.join(' ')}`
     : text
+
+  // Free/Creator posts carry a "Made with VyralBro" tag — see
+  // src/lib/billing/branding.ts for why this lives here (server-side,
+  // publish-time) rather than in Studio's preview.
+  if (shouldApplyBranding(account.workspace.user.plan)) {
+    fullText = applyBranding(fullText, platform)
+  }
 
   switch (platform) {
     case 'INSTAGRAM': return publishInstagram(token, account.platformUserId, fullText, mediaUrls, mediaType)

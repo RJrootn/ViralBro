@@ -29,9 +29,14 @@ export default function UsageMeter() {
   if (!data) return null
 
   const { plan, limits, usage } = data
+  // Both lines now read as "used / limit", consistently — previously posts
+  // showed used-so-far while credits showed balance-remaining, so the two
+  // numbers looked like the same pattern but meant opposite things.
   const postsLabel = limits.postsPerMonth === -1
-    ? `${usage.postsThisMonth} posts · unlimited`
-    : `${usage.postsThisMonth}/${limits.postsPerMonth} posts this month`
+    ? `${usage.postsThisMonth} posts used · unlimited`
+    : `${usage.postsThisMonth}/${limits.postsPerMonth} posts used this month`
+  const creditsUsed = limits.aiCredits - usage.aiCreditBalance
+  const creditsLabel = `${creditsUsed}/${limits.aiCredits} AI credits used`
   const nearLimit = limits.postsPerMonth !== -1 && usage.postsThisMonth >= limits.postsPerMonth * 0.7
   const lowCredits = usage.aiCreditBalance <= limits.aiCredits * 0.15
 
@@ -53,9 +58,9 @@ export default function UsageMeter() {
       <Bar used={usage.postsThisMonth} limit={limits.postsPerMonth} />
 
       <div style={{ fontSize: '0.72rem', color: lowCredits ? '#F87171' : '#A0A0B8', margin: '8px 0 4px' }}>
-        {usage.aiCreditBalance} / {limits.aiCredits} AI credits
+        {creditsLabel}
       </div>
-      <Bar used={limits.aiCredits - usage.aiCreditBalance} limit={limits.aiCredits} />
+      <Bar used={creditsUsed} limit={limits.aiCredits} />
     </div>
   )
 }
