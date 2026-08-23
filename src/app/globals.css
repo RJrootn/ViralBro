@@ -143,13 +143,24 @@
 
   /* Landing page nav: the Features/Pricing/Blog text links are the first
      thing to go on a narrow screen — Sign in / Start free stay since those
-     are the actual conversion buttons. */
+     are the actual conversion buttons, but they still need to shrink and
+     stay on one line or "Start free →" wraps its arrow onto its own line. */
   .landing-nav-links > span { display: none !important; }
   .landing-nav-links { gap: 8px !important; }
+  .landing-nav-btn { padding: 6px 12px !important; font-size: 0.74rem !important; }
 
-  /* Studio's editor/preview split stacks instead of sitting side by side */
-  .studio-main-grid { grid-template-columns: 1fr !important; overflow-y: auto !important; }
-  .studio-preview-panel { border-left: none !important; border-top: 1px solid rgba(255,255,255,0.06); min-height: 60vh; }
+  /* Studio's editor/preview split stacks instead of sitting side by side.
+     Two gotchas fixed here: (1) grid-auto-rows defaults to stretching an
+     'auto' row to fill leftover space when a sibling row has a min-height,
+     which was silently squeezing the editor row down to ~340px and hiding
+     everything below the first field inside its own tiny scroll box —
+     grid-auto-rows: min-content + align-content: start makes each row size
+     to its real content instead. (2) the editor's own overflow-y:auto (used
+     on desktop to scroll independently of the preview column) has to become
+     visible on mobile so the single stacked column just flows naturally and
+     the whole page scrolls as one, which is what people expect on a phone. */
+  .studio-main-grid { grid-template-columns: 1fr !important; grid-auto-rows: min-content !important; align-content: start !important; overflow-y: auto !important; }
+  .studio-preview-panel { border-left: none !important; border-top: 1px solid rgba(255,255,255,0.06); min-height: 420px; }
 
   /* Give fixed-padding page shells some room back on a narrow screen */
   .mobile-tighten-padding { padding: 4.5rem 1rem 1.5rem !important; }
@@ -166,12 +177,15 @@
   /* Same clearance, for a content block whose own layout (padding,
      flex-direction) should otherwise stay intact — just push it down
      clear of the fixed hamburger button in the top-left corner. */
-  .mobile-content-pad-top { padding-top: 4rem !important; padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+  .mobile-content-pad-top { padding-top: 4rem !important; padding-left: 1.25rem !important; padding-right: 1.25rem !important; overflow-y: visible !important; }
 }
 
 @media (max-width: 480px) {
   .responsive-grid-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .responsive-grid-4 { grid-template-columns: 1fr !important; }
+  /* On the narrowest phones even the shrunk nav buttons crowd the logo —
+     drop the "भारत" pill first since the flag icon already carries that. */
+  .landing-flag-badge { display: none !important; }
 }
 
 /* Login's two-panel split (a flexible branding panel + a fixed 460px form

@@ -47,7 +47,7 @@ export default function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
           <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>VyralBro</span>
-          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>भारत</span>
+          <span className="landing-flag-badge" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>भारत</span>
         </div>
         <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           {['Features', 'Pricing', 'Blog'].map(item => (
@@ -57,12 +57,12 @@ export default function LandingPage() {
               {item}
             </span>
           ))}
-          <a href="/login" style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: 'transparent', fontSize: '0.82rem', fontWeight: 600, color: '#F2F2F8', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.2s' }}
+          <a href="/login" className="landing-nav-btn" style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: 'transparent', fontSize: '0.82rem', fontWeight: 600, color: '#F2F2F8', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.2s', whiteSpace: 'nowrap' as const }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.3)'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.11)'}>
             Sign in
           </a>
-          <a href="/login" style={{ padding: '7px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.82rem', fontWeight: 700, color: '#fff', cursor: 'pointer', textDecoration: 'none', boxShadow: '0 2px 12px rgba(255,153,51,0.3)', transition: 'all 0.2s' }}
+          <a href="/login" className="landing-nav-btn" style={{ padding: '7px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#FF9933,#FF6B00)', fontSize: '0.82rem', fontWeight: 700, color: '#fff', cursor: 'pointer', textDecoration: 'none', boxShadow: '0 2px 12px rgba(255,153,51,0.3)', transition: 'all 0.2s', whiteSpace: 'nowrap' as const }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(255,153,51,0.4)' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(255,153,51,0.3)' }}>
             Start free →
@@ -98,7 +98,8 @@ export default function LandingPage() {
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
-              style={{ flex: 1, padding: '13px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.11)', background: '#111118', color: '#F2F2F8', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.2s' }}
+              className="landing-hero-input"
+              style={{ flex: 1, minWidth: 0, padding: '13px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.11)', background: '#111118', color: '#F2F2F8', fontSize: '0.92rem', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.2s' }}
               onFocus={e => e.target.style.borderColor = '#FF9933'}
               onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.11)'}
             />
