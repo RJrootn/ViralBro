@@ -13,6 +13,15 @@ export interface UsageData {
   usage: { postsThisMonth: number; aiCreditBalance: number }
 }
 
+// Every useUsage() call used to keep its own private state with no way for
+// one instance to know another had fetched fresher data — e.g. the Settings
+// > Billing tab would refresh right after a payment completed, but the
+// sidebar's UsageMeter (a separate mounted instance) had no way to find out,
+// and kept showing the pre-upgrade plan/limits until an unrelated remount.
+// Broadcasting on this event lets every mounted instance pick up whichever
+// one fetched last, without wiring a real shared store.
+const USAGE_EVENT = 'vyralbro:usage-refreshed'
+
 export function useUsage() {
   const [data, setData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,6 +32,7 @@ export function useUsage() {
       const json = await res.json()
       if (json.success) {
         setData(json.data)
+        window.dispatchEvent(new CustomEvent(USAGE_EVENT, { detail: json.data }))
         return json.data as UsageData
       }
       return null
@@ -34,6 +44,12 @@ export function useUsage() {
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
+
+  useEffect(() => {
+    const onExternalRefresh = (e: Event) => setData((e as CustomEvent<UsageData>).detail)
+    window.addEventListener(USAGE_EVENT, onExternalRefresh)
+    return () => window.removeEventListener(USAGE_EVENT, onExternalRefresh)
+  }, [])
 
   return { data, loading, refresh }
 }

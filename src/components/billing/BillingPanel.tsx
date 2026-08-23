@@ -9,7 +9,7 @@
 // telling the user to "check back later" with no way to know when.
 
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useUsage } from '@/lib/hooks/useUsage'
 import { PLAN_CARDS, type PaidPlan } from '@/lib/billing/plans'
@@ -51,19 +51,20 @@ export default function BillingPanel() {
       upgraded = fresh?.plan === plan
       if (!upgraded) await new Promise(r => setTimeout(r, 1000))
     }
+    // Set the terminal status directly here instead of leaving it to a
+    // separate effect watching `data?.plan` — the `refresh()` call above and
+    // this function's own state updates land in the same React batch, so an
+    // effect keyed on "payingPlan is still set AND data.plan matches" never
+    // actually observed a render where both were true at once: by the time
+    // React committed, payingPlan had already been reset alongside the new
+    // data. Result: the upgrade genuinely succeeded, but the "Activating
+    // your plan…" banner never cleared. Deciding it right here, from the
+    // `upgraded` value already computed in this scope, sidesteps the race.
+    setStatus(upgraded
+      ? { kind: 'success', text: `You're now on the ${plan} plan.` }
+      : { kind: 'error', text: "Payment went through, but activation is taking longer than usual — refresh this page in a minute. If your plan still hasn't updated, contact support with your payment confirmation." })
     setPayingPlan(null)
-    if (!upgraded) {
-      setStatus({ kind: 'error', text: "Payment went through, but activation is taking longer than usual — refresh this page in a minute. If your plan still hasn't updated, contact support with your payment confirmation." })
-    }
   }
-
-  // Once `data.plan` catches up to what we just paid for, show success.
-  useEffect(() => {
-    if (status?.kind === 'waiting' && payingPlan && data?.plan === payingPlan) {
-      setStatus({ kind: 'success', text: `You're now on the ${payingPlan} plan.` })
-      setPayingPlan(null)
-    }
-  }, [data?.plan, payingPlan, status?.kind])
 
   return (
     <div>
