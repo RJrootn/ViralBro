@@ -12,9 +12,17 @@ import { PLAN_LIMITS } from '@/lib/api'
 
 export type PaidPlan = 'CREATOR' | 'PRO' | 'AGENCY'
 
-// Amount in paise (₹799 = 79900), matching Razorpay's smallest-unit convention.
+// Amount in paise (₹999 = 99900), matching Razorpay's smallest-unit convention.
+//
+// Creator moved from ₹799 → ₹999 on 2026-08-23 after a unit-economics
+// review (see project doc "vyralbro-pricing-unit-economics-2026-08-23"):
+// typical-case AI cost was healthy at ₹799 (~72.6% margin), but the
+// worst-case per-generation cost (long output, near the model's token cap)
+// could erase margin entirely on heavy usage. ₹999 gives real buffer on the
+// typical case; the worst-case exposure itself is fixed separately by
+// capping per-generation output size in generate.ts, not by price alone.
 export const PLAN_PRICES: Record<PaidPlan, number> = {
-  CREATOR: 79900,
+  CREATOR: 99900,
   PRO:     199900,
   AGENCY:  499900,
 }

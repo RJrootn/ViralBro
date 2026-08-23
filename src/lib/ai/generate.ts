@@ -26,6 +26,27 @@ export const PLATFORM_FORMAT: Record<SocialPlatform, string> = {
   WHATSAPP:  'Concise broadcast message under 400 chars',
 }
 
+// Per-platform output token budget, sized generously off each platform's
+// actual character cap above (~4 chars/token) plus room for hashtags + tip.
+// Used to size max_tokens per request instead of a flat 8000 regardless of
+// which/how many platforms were picked — a flat cap meant a 1-platform
+// Twitter generation and a 6-platform generation shared the same worst-case
+// cost ceiling, which is real money: at $10/MTok output, 8,000 tokens is
+// ~₹7.80 per call no matter how little content was actually needed. See the
+// unit-economics review (project doc "vyralbro-pricing-unit-economics-2026-08-23")
+// for why this mattered enough to fix alongside the Creator price change.
+const PLATFORM_TOKEN_BUDGET: Record<SocialPlatform, number> = {
+  INSTAGRAM: 700,
+  TWITTER:   150,
+  LINKEDIN:  850,
+  YOUTUBE:   200,
+  FACEBOOK:  600,
+  WHATSAPP:  300,
+}
+
+const GENERATION_TOKEN_OVERHEAD = 200 // JSON/tool-call structure overhead, roughly constant regardless of platform count
+const MAX_TOKENS_CEILING = 8000       // absolute safety ceiling, unchanged — the per-platform budget should stay well under this in practice
+
 // ── Types ─────────────────────────────────────────────────────────────────
 export interface GenerateInput {
   rawContent:  string
@@ -99,9 +120,16 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
     required: ['text', 'hashtags', 'tip'],
   }
 
+  // Sized to what was actually requested, capped at MAX_TOKENS_CEILING as a
+  // hard backstop — see PLATFORM_TOKEN_BUDGET above.
+  const maxTokens = Math.min(
+    MAX_TOKENS_CEILING,
+    GENERATION_TOKEN_OVERHEAD + platforms.reduce((sum, p) => sum + PLATFORM_TOKEN_BUDGET[p], 0),
+  )
+
   const response = await client.messages.create({
     model:      'claude-sonnet-5',
-    max_tokens: 8000,
+    max_tokens: maxTokens,
     // Disabled intentionally: this is a formatting task, not a reasoning one,
     // and on Sonnet 5 thinking tokens count against max_tokens — leaving it
     // on would eat into the actual response budget for no benefit here.
@@ -123,7 +151,7 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
 
   if (response.stop_reason === 'max_tokens') {
     throw new Error(
-      `AI response was cut off before finishing (hit the ${8000}-token limit). ` +
+      `AI response was cut off before finishing (hit the ${maxTokens}-token limit for this generation). ` +
       `Try fewer platforms per generation, or shorten the input draft.`
     )
   }
