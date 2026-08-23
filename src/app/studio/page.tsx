@@ -101,6 +101,11 @@ export default function StudioPage() {
   // deserves more than a message that vanishes before anyone can act on it.
   const [limitBanner, setLimitBanner] = useState('')
   const [langIdx, setLangIdx] = useState(0)
+  // Live "N/total languages done" while a multi-language generate is in
+  // flight — null when idle. Shown in the Generate button so a multi-
+  // language run doesn't look frozen just because it's the slower of
+  // several requests still working through the queue.
+  const [genProgress, setGenProgress] = useState<{ done: number; total: number } | null>(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [media, setMedia] = useState<UploadedMedia[]>([])
@@ -200,6 +205,20 @@ export default function StudioPage() {
 
   const removeMedia = (url: string) => setMedia(prev => prev.filter(m => m.url !== url))
 
+  // Generating N languages used to fire N full /api/ai/generate calls in
+  // true parallel (Promise.allSettled) with no per-request timeout. That's
+  // fine for 1-2 languages, but at 4 languages × 6 platforms it can push
+  // real request latency — and, worse, `fetch` has no timeout by default,
+  // so if any single request just hangs (a slow/overloaded serverless
+  // function, a stalled connection), the whole button sits on "Adapting…"
+  // forever with zero feedback — exactly what RJ hit on video. Two fixes:
+  // a hard per-request timeout so a hang always resolves to a visible
+  // error instead of spinning silently, and a concurrency cap so a big
+  // multi-language request doesn't throw everything at the backend at
+  // once in the first place.
+  const GENERATE_TIMEOUT_MS = 45000
+  const GENERATE_CONCURRENCY = 2
+
   const generate = async () => {
     if (!raw.trim()) { showToast('Write your idea first'); return }
     if (platforms.length === 0) { showToast('Pick at least one platform'); return }
@@ -208,63 +227,84 @@ export default function StudioPage() {
     setPreviews({})
     setSaved(false)
     setLimitBanner('')
+    setGenProgress({ done: 0, total: languages.length })
 
-    // One call per selected language, in parallel — each independently and
-    // atomically credit-checked server-side (see reserveCredits in
-    // /api/ai/generate), so there's no double-spend risk running these
-    // concurrently, and one language running out of credits doesn't block
-    // the others from succeeding.
-    const settled = await Promise.allSettled(languages.map(async lang => {
-      const res = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawContent: raw,
-          tone,
-          format,
-          language: LANG_CODE[lang] ?? lang,
-          platforms: platforms.map(p => p.toUpperCase()),
-        }),
-      })
-      const data = await res.json()
-      return { lang, status: res.status, data }
-    }))
-
-    const nextPreviews: Record<string, Record<string, PlatformOutput>> = {}
     let creditsRemaining: number | null = null
     let limitHit = ''
-    let hardError = ''
+    let hardErrorShown = false
+    let activeLanguageSet = false
+    const succeeded: string[] = []
 
-    for (const outcome of settled) {
-      if (outcome.status !== 'fulfilled') { hardError = 'Error connecting to AI — check your API key'; continue }
-      const { lang, status, data } = outcome.value
-      if (data.success) {
-        const gen = data.data.generated
-        const mapped: Record<string, PlatformOutput> = {}
-        platforms.forEach(p => { if (gen[p.toUpperCase()]) mapped[p] = gen[p.toUpperCase()] })
-        nextPreviews[lang] = mapped
-        creditsRemaining = data.data.creditsRemaining
-      } else if (status === 402) {
-        limitHit = data.error ?? 'Plan limit reached'
-      } else {
-        hardError = data.error ?? `Generation failed for ${lang}`
+    const runOne = async (lang: string) => {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS)
+      try {
+        const res = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            rawContent: raw,
+            tone,
+            format,
+            language: LANG_CODE[lang] ?? lang,
+            platforms: platforms.map(p => p.toUpperCase()),
+          }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          const gen = data.data.generated
+          const mapped: Record<string, PlatformOutput> = {}
+          platforms.forEach(p => { if (gen[p.toUpperCase()]) mapped[p] = gen[p.toUpperCase()] })
+          // Set as each language finishes rather than waiting for all of
+          // them — with several languages selected, the first one to
+          // finish shows up immediately instead of everything appearing
+          // (or not) in one batch at the very end.
+          setPreviews(prev => ({ ...prev, [lang]: mapped }))
+          if (!activeLanguageSet) { activeLanguageSet = true; setActiveLanguage(lang) }
+          succeeded.push(lang)
+          creditsRemaining = data.data.creditsRemaining
+        } else if (res.status === 402) {
+          limitHit = data.error ?? 'Plan limit reached'
+        } else {
+          hardErrorShown = true
+          showToast(data.error ?? `Generation failed for ${lang}`)
+        }
+      } catch (e) {
+        hardErrorShown = true
+        const timedOut = e instanceof DOMException && e.name === 'AbortError'
+        showToast(timedOut
+          ? `${lang} took too long and timed out — try fewer languages or platforms at once`
+          : 'Error connecting to AI — check your connection')
+      } finally {
+        clearTimeout(timer)
+        setGenProgress(p => p ? { ...p, done: p.done + 1 } : p)
       }
     }
 
-    setPreviews(nextPreviews)
-    const succeededLangs = Object.keys(nextPreviews)
-    if (succeededLangs.length > 0) {
-      setActiveLanguage(prev => nextPreviews[prev] ? prev : succeededLangs[0])
-      const totalPosts = succeededLangs.reduce((n, l) => n + Object.keys(nextPreviews[l]).length, 0)
+    // Bounded-concurrency queue — GENERATE_CONCURRENCY requests in flight
+    // at a time rather than all of `languages` at once.
+    const queue = [...languages]
+    await Promise.all(
+      Array.from({ length: Math.min(GENERATE_CONCURRENCY, queue.length) }, async () => {
+        while (queue.length > 0) {
+          const lang = queue.shift()
+          if (lang) await runOne(lang)
+        }
+      })
+    )
+
+    if (succeeded.length > 0) {
       showToast(
-        `✦ Adapted ${totalPosts} post${totalPosts > 1 ? 's' : ''} across ${succeededLangs.length} language${succeededLangs.length > 1 ? 's' : ''}` +
+        `✦ Adapted for ${succeeded.length} language${succeeded.length > 1 ? 's' : ''}` +
         (creditsRemaining !== null ? ` · ${creditsRemaining} credits left` : '')
       )
-    } else if (hardError) {
-      showToast(hardError)
+    } else if (!limitHit && !hardErrorShown) {
+      showToast('Generation failed — try again')
     }
     if (limitHit) setLimitBanner(limitHit)
     setLoading(false)
+    setGenProgress(null)
   }
 
   // Build the /api/posts payload from whatever's been generated, restricted to
@@ -581,7 +621,7 @@ export default function StudioPage() {
               onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(255,153,51,0.35)' } }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = loading ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}>
               {loading
-                ? <><Spinner /> Adapting for Bharat…</>
+                ? <><Spinner /> {genProgress && genProgress.total > 1 ? `Adapting… (${genProgress.done}/${genProgress.total} languages)` : 'Adapting for Bharat…'}</>
                 : <>✦ Generate with AI</>}
             </button>
 
@@ -631,7 +671,12 @@ export default function StudioPage() {
           )}
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {loading && platforms.map((p, i) => (
+            {/* Only shimmer for platforms that haven't come back yet — with
+                multiple languages generating, results for the active
+                language can arrive while others are still in flight, and
+                previously this whole block stayed shimmer-only until every
+                language finished, hiding results that were already done. */}
+            {loading && platforms.filter(p => !currentPreviews[p]).map((p, i) => (
               <div key={p} style={{ background: '#18181F', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '12px 14px', animationDelay: `${i * 0.08}s` }}>
                 <Shimmer width="40%" height={12} mb={12} />
                 <Shimmer width="95%" height={11} mb={8} />
@@ -648,7 +693,7 @@ export default function StudioPage() {
               </div>
             )}
 
-            {!loading && platforms.map(p => {
+            {platforms.map(p => {
               const d = currentPreviews[p]
               if (!d) return null
               const lim = PM[p]
