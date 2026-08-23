@@ -12,13 +12,14 @@
 import { addMonths } from 'date-fns'
 import type { Plan } from '@prisma/client'
 import { db } from '@/lib/db/client'
+import { PLAN_LIMITS } from '@/lib/api'
 
-const AI_CREDITS_PER_PLAN: Record<Plan, number> = {
-  FREE:    50,
-  CREATOR: 500,
-  PRO:     2000,
-  AGENCY:  5000,
-}
+// Was a second hardcoded copy of credit allowances here, separate from
+// PLAN_LIMITS in api.ts — it drifted out of sync during the 2026-08-23
+// pricing revision (this still said CREATOR: 500 after CREATOR moved to
+// 400 credits), which would have silently over-credited every real Creator
+// upgrade. Reading from PLAN_LIMITS directly means there's only one place
+// left to update when limits change.
 
 export async function applyCapturedPayment(orderId: string, paymentId: string): Promise<'applied' | 'already_applied' | 'unknown_order'> {
   const payment = await db.payment.findUnique({ where: { razorpayOrderId: orderId } })
@@ -40,7 +41,7 @@ export async function applyCapturedPayment(orderId: string, paymentId: string): 
     data: { plan, planExpiresAt: addMonths(new Date(), 1) },
   })
 
-  const toAdd = AI_CREDITS_PER_PLAN[plan]
+  const toAdd = PLAN_LIMITS[plan].aiCredits
   await db.$transaction(async (tx) => {
     const updatedUser = await tx.user.update({
       where: { id: payment.userId },

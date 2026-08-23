@@ -227,7 +227,7 @@ export default function LandingPage() {
             {
               icon: '💳',
               title: 'Pay in ₹, not $',
-              desc: 'Razorpay native. UPI, cards, net banking — all supported. No conversion rate surprises. Plans start at ₹799/month.',
+              desc: 'Razorpay native. UPI, cards, net banking — all supported. No conversion rate surprises. Plans start at ₹999/month.',
               color: '#E1306C',
             },
             {
@@ -295,10 +295,10 @@ export default function LandingPage() {
           </div>
           <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
             {[
-              { name: 'Free', price: '₹0', period: 'forever', posts: '10 posts/mo', credits: '50 AI credits', platforms: '2 platforms', cta: 'Start free', highlight: false },
-              { name: 'Creator', price: '₹799', period: '/month', posts: '100 posts/mo', credits: '500 AI credits', platforms: '4 platforms', cta: 'Get Creator', highlight: false },
-              { name: 'Pro', price: '₹1,999', period: '/month', posts: '500 posts/mo', credits: '2,000 AI credits', platforms: '6 platforms', cta: 'Get Pro', highlight: true },
-              { name: 'Agency', price: '₹4,999', period: '/month', posts: 'Unlimited', credits: '5,000 AI credits', platforms: '6 platforms', cta: 'Get Agency', highlight: false },
+              { name: 'Free', price: '₹0', period: 'forever', posts: '5 posts/mo', credits: '25 AI credits', platforms: '1 platform', cta: 'Start free', highlight: false },
+              { name: 'Creator', price: '₹999', period: '/month', posts: '99 posts/mo', credits: '400 AI credits', platforms: '3 platforms', cta: 'Get Creator', highlight: false },
+              { name: 'Pro', price: '₹2,999', period: '/month', posts: '500 posts/mo', credits: '2,000 AI credits', platforms: '5 platforms', cta: 'Get Pro', highlight: true },
+              { name: 'Top1% Club', price: '₹6,999', period: '/month', posts: 'Unlimited', credits: '5,000 AI credits', platforms: '6 platforms', cta: 'Join Top1% Club', highlight: false },
             ].map(p => (
               <div key={p.name} style={{ background: p.highlight ? 'rgba(255,153,51,0.06)' : '#111118', border: `1px solid ${p.highlight ? 'rgba(255,153,51,0.3)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 18, padding: '28px 24px', position: 'relative', transition: 'all 0.2s' }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'}

@@ -14,24 +14,27 @@ export type PaidPlan = 'CREATOR' | 'PRO' | 'AGENCY'
 
 // Amount in paise (₹999 = 99900), matching Razorpay's smallest-unit convention.
 //
-// Creator moved from ₹799 → ₹999 on 2026-08-23 after a unit-economics
-// review (see project doc "vyralbro-pricing-unit-economics-2026-08-23"):
-// typical-case AI cost was healthy at ₹799 (~72.6% margin), but the
-// worst-case per-generation cost (long output, near the model's token cap)
-// could erase margin entirely on heavy usage. ₹999 gives real buffer on the
-// typical case; the worst-case exposure itself is fixed separately by
-// capping per-generation output size in generate.ts, not by price alone.
+// Finalized 2026-08-23 after a unit-economics review (see project doc
+// "vyralbro-pricing-unit-economics-2026-08-23"). All three paid tiers now
+// hold 63-82% margin even in the worst-case (near-token-cap) generation
+// cost scenario, thanks to the per-platform token budget cap in
+// generate.ts — margin no longer erodes as customers move up tiers, which
+// was the original problem with the ₹799/₹1,999/₹4,999 pricing.
 export const PLAN_PRICES: Record<PaidPlan, number> = {
   CREATOR: 99900,
-  PRO:     199900,
-  AGENCY:  499900,
+  PRO:     299900,
+  AGENCY:  699900,
 }
 
+// AGENCY's display label is "Top1% Club" — matches VyralBro's own "top 1%
+// SaaS" positioning. The underlying plan key stays AGENCY (matches the
+// Prisma enum; renaming that would need a migration for zero product
+// benefit) — only the customer-facing label changed.
 export const PLAN_LABELS: Record<'FREE' | PaidPlan, string> = {
   FREE:    'Free',
   CREATOR: 'Creator',
   PRO:     'Pro',
-  AGENCY:  'Agency',
+  AGENCY:  'Top1% Club',
 }
 
 export function formatRupees(paise: number) {

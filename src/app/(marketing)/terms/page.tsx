@@ -58,7 +58,7 @@ export default function TermsOfServicePage() {
         <div style={sectionStyle}>
           <h2 style={h2Style}>5. Plans, billing, and AI credits</h2>
           <ul style={{ paddingLeft: 20, marginBottom: 12 }}>
-            <li style={liStyle}>VyralBro offers Free, Creator, Pro, and Agency plans, priced in INR, each with a monthly post limit, an AI credit allowance, and a limit on how many platforms you can connect — shown on our pricing page.</li>
+            <li style={liStyle}>VyralBro offers Free, Creator, Pro, and Top1% Club plans, priced in INR, each with a monthly post limit, an AI credit allowance, and a limit on how many platforms you can connect — shown on our pricing page.</li>
             <li style={liStyle}>Paid subscriptions are billed through Razorpay. We don&apos;t store your card or bank details ourselves.</li>
             <li style={liStyle}>AI credits are consumed when you generate platform-adapted content. Unused credits do not currently roll over between billing cycles.</li>
             <li style={liStyle}>We don&apos;t yet have a formal refund policy published. If you have a billing issue, email <a href="mailto:rj@rootn.ai" style={{ color: '#FF9933' }}>rj@rootn.ai</a> and we&apos;ll work it out directly — we&apos;d rather sort it out than hide behind fine print.</li>
