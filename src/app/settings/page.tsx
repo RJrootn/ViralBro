@@ -22,7 +22,7 @@ export default function SettingsPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A0A0F', fontFamily: 'system-ui, sans-serif', color: '#F0F0F8', WebkitFontSmoothing: 'antialiased' }}>
       <Sidebar />
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem' }}>
+      <div className="mobile-tighten-padding" style={{ flex: 1, overflowY: 'auto', padding: '2rem 2.5rem' }}>
         <div style={{ maxWidth: 1100 }}>
           <PlatformConnector />
         </div>

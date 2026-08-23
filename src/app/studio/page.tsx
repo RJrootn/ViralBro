@@ -81,6 +81,7 @@ export default function StudioPage() {
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
   const [langIdx, setLangIdx] = useState(0)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [media, setMedia] = useState<UploadedMedia[]>([])
   const [mediaType, setMediaType] = useState<typeof MEDIA_TYPE_OPTIONS[number]['key']>('IMAGE')
@@ -298,8 +299,20 @@ export default function StudioPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0A0A0F', fontFamily: 'system-ui, sans-serif', color: '#F0F0F8', WebkitFontSmoothing: 'antialiased' }}>
 
+      <button
+        aria-label="Open menu"
+        className="mobile-menu-btn"
+        onClick={() => setMobileNavOpen(o => !o)}
+      >
+        ☰
+      </button>
+      <div
+        className={`mobile-sidebar-backdrop${mobileNavOpen ? ' open' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      />
+
       {/* ── SIDEBAR (mini) ── */}
-      <aside style={{ width: 220, flexShrink: 0, background: '#12121A', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column' }}>
+      <aside className={`app-sidebar${mobileNavOpen ? ' mobile-open' : ''}`} style={{ width: 220, flexShrink: 0, background: '#12121A', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BharatFlag />
@@ -318,7 +331,7 @@ export default function StudioPage() {
             { icon: '📊', label: 'Analytics', path: '/dashboard' },
             { icon: '🔌', label: 'Settings', path: '/settings' },
           ].map(item => (
-            <div key={item.label} onClick={() => item.path && router.push(item.path)}
+            <div key={item.label} onClick={() => { setMobileNavOpen(false); if (item.path) router.push(item.path) }}
               style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', margin: '1px 6px', borderRadius: 9, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500, color: item.active ? '#FF9933' : '#7A7A90', background: item.active ? 'rgba(255,153,51,0.1)' : 'transparent', transition: 'all 0.15s' }}
               onMouseEnter={e => { if (!item.active) { (e.currentTarget as HTMLElement).style.background = '#18181F'; (e.currentTarget as HTMLElement).style.color = '#F0F0F8' } }}
               onMouseLeave={e => { if (!item.active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#7A7A90' } }}>
@@ -339,10 +352,10 @@ export default function StudioPage() {
       </aside>
 
       {/* ── EDITOR + PREVIEW ── */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', overflow: 'hidden' }}>
+      <div className="studio-main-grid" style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 420px', overflow: 'hidden' }}>
 
         {/* LEFT: Editor */}
-        <div style={{ borderRight: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', padding: '2rem 2rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        <div className="mobile-content-pad-top" style={{ borderRight: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', padding: '2rem 2rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 
           {/* Header */}
           <div style={{ paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -502,7 +515,7 @@ export default function StudioPage() {
         </div>
 
         {/* RIGHT: Previews */}
-        <div style={{ background: '#12121A', borderLeft: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="studio-preview-panel" style={{ background: '#12121A', borderLeft: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#7A7A90' }}>Platform Previews</div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,153,51,0.1)', border: '1px solid rgba(255,153,51,0.25)', color: '#FF9933', letterSpacing: '0.06em' }}>✦ AI Adapted</div>

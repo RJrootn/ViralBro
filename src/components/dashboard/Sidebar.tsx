@@ -66,6 +66,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const active = activeFromPathname(pathname ?? '/dashboard')
   const [langIdx, setLangIdx] = useState(0)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const accounts = useConnectedAccounts()
 
   useEffect(() => {
@@ -73,10 +74,28 @@ export default function Sidebar() {
     return () => clearInterval(interval)
   }, [])
 
+  // Auto-close the mobile drawer on every navigation — otherwise it stays
+  // open over the new page after a nav item is tapped.
+  useEffect(() => { setMobileOpen(false) }, [pathname])
+
   const nav = (page: SidebarPage) => router.push(NAV_PATHS[page])
 
   return (
-    <aside style={{ width: 220, flexShrink: 0, background: '#12121A', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
+    <>
+      <button
+        aria-label="Open menu"
+        className="mobile-menu-btn"
+        onClick={() => setMobileOpen(o => !o)}
+      >
+        ☰
+      </button>
+      <div
+        className={`mobile-sidebar-backdrop${mobileOpen ? ' open' : ''}`}
+        onClick={() => setMobileOpen(false)}
+      />
+      <aside
+        className={`app-sidebar${mobileOpen ? ' mobile-open' : ''}`}
+        style={{ width: 220, flexShrink: 0, background: '#12121A', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto' }}>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
@@ -129,7 +148,8 @@ export default function Sidebar() {
         </div>
         <span style={{ fontSize: '0.7rem', color: '#5A5A72', cursor: 'pointer' }} onClick={() => signOut({ callbackUrl: '/login' })}>⏻</span>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 

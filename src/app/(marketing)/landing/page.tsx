@@ -49,7 +49,7 @@ export default function LandingPage() {
           <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>VyralBro</span>
           <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>भारत</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           {['Features', 'Pricing', 'Blog'].map(item => (
             <span key={item} style={{ fontSize: '0.85rem', fontWeight: 500, color: '#8585A0', cursor: 'pointer', transition: 'color 0.2s' }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#F2F2F8'}
@@ -91,7 +91,7 @@ export default function LandingPage() {
 
         {/* Waitlist form */}
         {!submitted ? (
-          <form onSubmit={handleWaitlist} style={{ display: 'flex', gap: 10, marginBottom: 20, width: '100%', maxWidth: 480 }}>
+          <form onSubmit={handleWaitlist} className="landing-hero-form" style={{ display: 'flex', gap: 10, marginBottom: 20, width: '100%', maxWidth: 480 }}>
             <input
               type="email"
               value={email}
@@ -143,7 +143,7 @@ export default function LandingPage() {
             <span style={{ marginLeft: 12, fontSize: '0.75rem', color: '#55556A' }}>localhost:3000/dashboard</span>
             <span style={{ marginLeft: 'auto', fontSize: '0.65rem', fontWeight: 700, color: '#7A7A90', background: 'rgba(255,255,255,0.06)', borderRadius: 20, padding: '2px 9px' }}>Sample preview</span>
           </div>
-          <div style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+          <div className="responsive-grid-4" style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
             {[
               { label: 'Total Reach', val: '3.09M', delta: '↑ 18.4%', color: '#FF9933' },
               { label: 'Avg. Engagement', val: '6.7%', delta: '↑ 2.1pp', color: '#8B5CF6' },
@@ -197,7 +197,7 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+        <div className="responsive-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
           {[
             {
               icon: '✦',
@@ -252,7 +252,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>How it works</div>
           <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em', marginBottom: 56 }}>Three steps. That&apos;s it.</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 40 }}>
+          <div className="responsive-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 40 }}>
             {[
               { num: '01', title: 'Write your idea', desc: 'Paste your raw idea, story, or announcement. Just your words — no formatting needed.' },
               { num: '02', title: 'AI adapts it', desc: 'Claude AI rewrites it for each platform — right length, right tone, right hashtags, right language.' },
@@ -292,7 +292,7 @@ export default function LandingPage() {
             <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 3vw, 2.4rem)', letterSpacing: '-0.03em', marginBottom: 12 }}>Priced for India</h2>
             <p style={{ fontSize: '0.9rem', color: '#8585A0' }}>Pay in ₹. Cancel anytime. No hidden charges.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+          <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
             {[
               { name: 'Free', price: '₹0', period: 'forever', posts: '10 posts/mo', credits: '50 AI credits', platforms: '2 platforms', cta: 'Start free', highlight: false },
               { name: 'Creator', price: '₹799', period: '/month', posts: '100 posts/mo', credits: '500 AI credits', platforms: '4 platforms', cta: 'Get Creator', highlight: false },
@@ -357,7 +357,7 @@ export default function LandingPage() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 5%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <footer className="landing-footer" style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(255,255,255,0.06)', padding: '32px 5%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
           <span style={{ fontWeight: 900, fontSize: '1rem' }}>VyralBro</span>

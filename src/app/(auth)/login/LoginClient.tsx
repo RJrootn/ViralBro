@@ -34,7 +34,7 @@ export default function LoginClient() {
 
 function Left() {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#111118', borderRight: '1px solid rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
+    <div className="login-left-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#111118', borderRight: '1px solid rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#FF9933 33.33%,#fff 33.33% 66.66%,#138808 66.66%)', zIndex: 2 }} />
       <div style={{ position: 'absolute', top: -100, left: -80, width: 500, height: 400, borderRadius: '50%', background: '#FF9933', opacity: 0.1, filter: 'blur(130px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -120, right: -80, width: 450, height: 450, borderRadius: '50%', background: '#138808', opacity: 0.08, filter: 'blur(130px)', pointerEvents: 'none' }} />
@@ -109,7 +109,7 @@ function Right({ error, loading, status, onGoogle }: {
   onGoogle: () => void
 }) {
   return (
-    <div style={{ width: 460, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 48px', background: '#06060A', overflowY: 'auto' }}>
+    <div className="login-right-panel" style={{ width: 460, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 48px', background: '#06060A', overflowY: 'auto' }}>
       <div style={{ width: '100%', maxWidth: 340 }}>
         <h2 style={{ fontWeight: 700, fontSize: '1.75rem', letterSpacing: '-0.02em', color: '#F2F2F8', marginBottom: 6 }}>
           Welcome back

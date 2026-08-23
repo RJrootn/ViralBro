@@ -8,7 +8,7 @@
 export default function ComingSoon({ icon, title, subtitle, body }: { icon: string; title: string; subtitle: string; body: string }) {
   return (
     <>
-      <div style={{ height: 54, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
+      <div className="mobile-header-pad" style={{ height: 54, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#FF9933 33.33%,#fff 33.33% 66.66%,#138808 66.66%)' }} />
         <div style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>{title}</div>
       </div>

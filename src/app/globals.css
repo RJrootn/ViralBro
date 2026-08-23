@@ -83,6 +83,123 @@
   .plat-whatsapp  { color: #25D366; }
 }
 
+/* ── Mobile responsive layout ────────────────────────────────────────────
+   The whole app was built with fixed-pixel inline styles (a 220px sidebar
+   sitting in a flex row next to the content) and zero @media queries
+   anywhere except one component. On a phone that sidebar alone eats most
+   of the screen width. Rather than rewrite every page's inline styles to
+   Tailwind, these classes give the handful of genuinely fixed layouts
+   (Sidebar, Studio's own mini-sidebar, Dashboard's rigid CSS-grid rows,
+   Studio's editor/preview split) a mobile-specific override, applied via
+   className so a plain @media query can reach them. */
+.mobile-menu-btn { display: none; }
+.mobile-sidebar-backdrop { display: none; }
+
+@media (max-width: 860px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    z-index: 60;
+    width: 260px !important;
+    height: 100vh;
+    transition: left 0.25s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  .app-sidebar.mobile-open { left: 0; }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 70;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #18181F;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    color: #F0F0F8;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  .mobile-sidebar-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 55;
+  }
+
+  /* Dashboard's rigid CSS-grid rows collapse to fewer/single columns */
+  .responsive-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+  .responsive-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .responsive-grid-3 { grid-template-columns: 1fr !important; }
+  .responsive-grid-2 { grid-template-columns: 1fr !important; }
+  .responsive-split-primary { grid-template-columns: 1fr !important; }
+
+  /* Landing page nav: the Features/Pricing/Blog text links are the first
+     thing to go on a narrow screen — Sign in / Start free stay since those
+     are the actual conversion buttons. */
+  .landing-nav-links > span { display: none !important; }
+  .landing-nav-links { gap: 8px !important; }
+
+  /* Studio's editor/preview split stacks instead of sitting side by side */
+  .studio-main-grid { grid-template-columns: 1fr !important; overflow-y: auto !important; }
+  .studio-preview-panel { border-left: none !important; border-top: 1px solid rgba(255,255,255,0.06); min-height: 60vh; }
+
+  /* Give fixed-padding page shells some room back on a narrow screen */
+  .mobile-tighten-padding { padding: 4.5rem 1rem 1.5rem !important; }
+  /* Same idea for a slim fixed-height header bar — just push its content
+     right so it doesn't sit under the fixed hamburger button, and let it
+     wrap onto a second line if the header's own controls don't fit. */
+  .mobile-header-pad {
+    height: auto !important;
+    min-height: 54px;
+    padding: 10px 14px 10px 58px !important;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Same clearance, for a content block whose own layout (padding,
+     flex-direction) should otherwise stay intact — just push it down
+     clear of the fixed hamburger button in the top-left corner. */
+  .mobile-content-pad-top { padding-top: 4rem !important; padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+}
+
+@media (max-width: 480px) {
+  .responsive-grid-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+  .responsive-grid-4 { grid-template-columns: 1fr !important; }
+}
+
+/* Login's two-panel split (a flexible branding panel + a fixed 460px form
+   panel) leaves no room for the form panel on a phone screen — the fixed
+   width alone is wider than most phones. Below a phone-ish breakpoint, drop
+   the branding panel and let the form take the full screen, which is the
+   standard pattern for this kind of split-login layout. */
+@media (max-width: 760px) {
+  .login-left-panel { display: none !important; }
+  .login-right-panel { width: 100% !important; padding: 32px 22px !important; }
+}
+
+/* Landing page footer: three flex sections with space-between get cramped
+   on a phone-width screen — stack and center them instead. */
+@media (max-width: 640px) {
+  .landing-footer {
+    flex-direction: column !important;
+    gap: 14px !important;
+    text-align: center !important;
+  }
+}
+
+/* Hero waitlist form: input + button side by side get too narrow to type
+   into on very small phones — stack them instead. */
+@media (max-width: 420px) {
+  .landing-hero-form { flex-direction: column !important; }
+}
+
 /* Ambient background orbs */
 .ambient-orb {
   position: fixed;
