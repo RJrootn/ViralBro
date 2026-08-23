@@ -299,7 +299,14 @@ export default function StudioPage() {
         `✦ Adapted for ${succeeded.length} language${succeeded.length > 1 ? 's' : ''}` +
         (creditsRemaining !== null ? ` · ${creditsRemaining} credits left` : '')
       )
-    } else if (!limitHit && !hardErrorShown) {
+    } else if (limitHit) {
+      // Nothing generated at all and the reason was a plan limit (e.g. more
+      // platforms selected than the plan allows) — always show a toast, not
+      // just the LimitBanner. The banner renders inline near the top of the
+      // scrollable editor panel and can be scrolled out of view; the toast
+      // is fixed-position and always visible regardless of scroll.
+      showToast(limitHit)
+    } else if (!hardErrorShown) {
       showToast('Generation failed — try again')
     }
     if (limitHit) setLimitBanner(limitHit)
