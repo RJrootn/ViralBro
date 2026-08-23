@@ -33,20 +33,23 @@ export default function BillingPanel() {
     if (!result.ok) {
       setPayingPlan(null)
       if (result.reason === 'dismissed') return // user closed the popup — no error, they just changed their mind
-      setStatus({ kind: 'error', text: result.reason === 'script_load_failed'
-        ? 'Could not load the payment window. Check your connection and try again.'
-        : 'Could not start checkout. Please try again in a moment.' })
+      setStatus({ kind: 'error', text:
+        result.reason === 'script_load_failed' ? 'Could not load the payment window. Check your connection and try again.' :
+        result.reason === 'verify_failed' ? "Payment went through but we couldn't confirm it automatically. Refresh this page in a minute — if your plan still hasn't updated, contact support with your payment confirmation." :
+        'Could not start checkout. Please try again in a moment.' })
       return
     }
 
-    setStatus({ kind: 'waiting', text: 'Payment received — activating your plan…' })
-    // The webhook is what actually upgrades the plan; poll for it to land
-    // rather than assuming it already has by the time this line runs.
+    // /api/payments/verify (called inside startCheckout's handler) already
+    // applied the upgrade synchronously before resolving here — this is
+    // just re-fetching to reflect it in the UI, with a short retry margin
+    // in case of any read-after-write lag.
+    setStatus({ kind: 'waiting', text: 'Activating your plan…' })
     let upgraded = false
-    for (let attempt = 0; attempt < 10 && !upgraded; attempt++) {
-      await new Promise(r => setTimeout(r, 2000))
+    for (let attempt = 0; attempt < 3 && !upgraded; attempt++) {
       const fresh = await refresh()
       upgraded = fresh?.plan === plan
+      if (!upgraded) await new Promise(r => setTimeout(r, 1000))
     }
     setPayingPlan(null)
     if (!upgraded) {

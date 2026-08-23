@@ -15,6 +15,12 @@ declare global {
   }
 }
 
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
+}
+
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise(resolve => {
     if (window.Razorpay) return resolve(true)
@@ -28,7 +34,7 @@ function loadRazorpayScript(): Promise<boolean> {
 
 export interface CheckoutResult {
   ok: boolean
-  reason?: 'script_load_failed' | 'order_failed' | 'dismissed'
+  reason?: 'script_load_failed' | 'order_failed' | 'dismissed' | 'verify_failed'
 }
 
 export async function startCheckout(plan: 'CREATOR' | 'PRO' | 'AGENCY', userEmail?: string | null, userName?: string | null): Promise<CheckoutResult> {
@@ -55,7 +61,24 @@ export async function startCheckout(plan: 'CREATOR' | 'PRO' | 'AGENCY', userEmai
       order_id: orderId,
       prefill: { email: userEmail ?? undefined, name: userName ?? undefined },
       theme: { color: '#FF9933' },
-      handler: () => resolve({ ok: true }),
+      // This fires the moment Razorpay confirms the payment — call our own
+      // verify endpoint immediately with the signed response rather than
+      // trusting the popup closing to mean success, and rather than relying
+      // on a webhook that needs separate registration in the Razorpay
+      // Dashboard to ever reach us at all.
+      handler: async (response: RazorpaySuccessResponse) => {
+        try {
+          const verifyRes = await fetch('/api/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+          })
+          const verifyData = await verifyRes.json()
+          resolve(verifyData.success ? { ok: true } : { ok: false, reason: 'verify_failed' })
+        } catch {
+          resolve({ ok: false, reason: 'verify_failed' })
+        }
+      },
       modal: { ondismiss: () => resolve({ ok: false, reason: 'dismissed' }) },
     })
     rzp.open()
