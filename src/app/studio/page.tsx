@@ -147,8 +147,23 @@ export default function StudioPage() {
     setTimeout(() => setToast(''), 3000)
   }
 
+  // Undefined while usage hasn't loaded yet — treated as "no cap" below so
+  // the platform grid doesn't flash into a locked state during initial load.
+  const platformCap = usageData?.limits.platforms
+
   const togglePlatform = (p: string) => {
-    setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
+    setPlatforms(prev => {
+      if (prev.includes(p)) return prev.filter(x => x !== p)
+      // Real guardrail, not just a warning: don't let the selection itself
+      // go beyond what the plan allows. Before this, all 6 platform cards
+      // could show as fully selected on a plan capped at 1 — a mismatch
+      // that only surfaced as a server error once you actually hit Generate.
+      if (platformCap !== undefined && prev.length >= platformCap) {
+        showToast(`Your plan allows ${platformCap} platform${platformCap === 1 ? '' : 's'} per post — upgrade for more.`)
+        return prev
+      }
+      return [...prev, p]
+    })
   }
 
   const toggleLanguage = (l: string) => {
@@ -576,14 +591,18 @@ export default function StudioPage() {
               {Object.entries(PL).map(([key, name]) => {
                 const on = platforms.includes(key)
                 const connected = !!accountFor(key)
+                const lockedByPlan = !on && platformCap !== undefined && platforms.length >= platformCap
                 return (
                   <div key={key} onClick={() => togglePlatform(key)}
-                    style={{ border: `1.5px solid ${on ? PC[key] : 'rgba(255,255,255,0.08)'}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', background: on ? '#18181F' : '#12121A', transition: 'all 0.2s', userSelect: 'none' as const }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: PC[key], boxShadow: on ? `0 0 6px ${PC[key]}` : 'none', flexShrink: 0, transition: 'box-shadow 0.2s' }} />
+                    title={lockedByPlan ? `Your plan allows ${platformCap} platform${platformCap === 1 ? '' : 's'} per post — upgrade for more` : undefined}
+                    style={{ border: `1.5px solid ${on ? PC[key] : 'rgba(255,255,255,0.08)'}`, borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 9, cursor: lockedByPlan ? 'not-allowed' : 'pointer', background: on ? '#18181F' : '#12121A', opacity: lockedByPlan ? 0.45 : 1, transition: 'all 0.2s', userSelect: 'none' as const }}>
+                    {lockedByPlan
+                      ? <div style={{ width: 8, height: 8, flexShrink: 0, fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🔒</div>
+                      : <div style={{ width: 8, height: 8, borderRadius: '50%', background: PC[key], boxShadow: on ? `0 0 6px ${PC[key]}` : 'none', flexShrink: 0, transition: 'box-shadow 0.2s' }} />}
                     <div>
                       <div style={{ fontSize: '0.8rem', fontWeight: 600, color: on ? PC[key] : '#7A7A90' }}>{name}</div>
-                      <div style={{ fontSize: '0.62rem', color: connected ? '#34D399' : '#7A7A90' }}>
-                        {connected ? '✓ connected' : 'not connected'}
+                      <div style={{ fontSize: '0.62rem', color: lockedByPlan ? '#7A7A90' : connected ? '#34D399' : '#7A7A90' }}>
+                        {lockedByPlan ? 'upgrade for more' : connected ? '✓ connected' : 'not connected'}
                       </div>
                     </div>
                   </div>
@@ -651,14 +670,16 @@ export default function StudioPage() {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' as const }}>
-            <button onClick={generate} disabled={loading || atPostCap}
-              title={atPostCap ? `You've hit your plan's ${usageData?.limits.postsPerMonth} posts/month limit — upgrade to keep generating` : undefined}
-              style={{ position: 'relative', padding: '11px 26px', borderRadius: 12, border: 'none', background: (loading || atPostCap) ? '#333' : 'linear-gradient(135deg,#FF9933,#FF6B00)', color: atPostCap ? '#8585A0' : '#fff', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 700, cursor: (loading || atPostCap) ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, boxShadow: (loading || atPostCap) ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}
+            <button
+              onClick={atPostCap ? () => router.push('/settings?tab=billing') : generate}
+              disabled={loading}
+              title={atPostCap ? `You've hit your plan's ${usageData?.limits.postsPerMonth} posts/month limit — click to upgrade` : undefined}
+              style={{ position: 'relative', padding: '11px 26px', borderRadius: 12, border: atPostCap ? '1px solid rgba(255,153,51,0.4)' : 'none', background: loading ? '#333' : atPostCap ? 'rgba(255,153,51,0.1)' : 'linear-gradient(135deg,#FF9933,#FF6B00)', color: atPostCap ? '#FF9933' : '#fff', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8, boxShadow: (loading || atPostCap) ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}
               onMouseEnter={e => { if (!loading && !atPostCap) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(255,153,51,0.35)' } }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = (loading || atPostCap) ? 'none' : '0 2px 14px rgba(255,153,51,0.25)' }}>
               {loading
                 ? <><Spinner /> {genProgress && genProgress.total > 1 ? `Adapting… (${genProgress.done}/${genProgress.total} languages)` : 'Adapting for Bharat…'}</>
-                : atPostCap ? <>🔒 Upgrade to generate more</>
+                : atPostCap ? <>🔒 Upgrade to generate more →</>
                 : <>✦ Generate with AI</>}
             </button>
 
