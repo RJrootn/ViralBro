@@ -48,15 +48,15 @@ export function withErrorHandler(
 // Pricing/limits finalized 2026-08-23 after a unit-economics review (see
 // project doc "vyralbro-pricing-unit-economics-2026-08-23"). Two deliberate
 // design choices worth remembering if these ever get revisited:
-// - CREATOR's 400 credits comfortably covers its 99-post x 3-platform max
-//   (297 credits) — credits are not the binding constraint on this tier.
+// - CREATOR's 400 credits comfortably covers its 100-post x 3-platform max
+//   (300 credits) — credits are not the binding constraint on this tier.
 // - PRO's 2,000 credits do NOT cover its 500-post x 5-platform max (2,500
 //   credits) — this is intentional. A Pro user posting to all 5 platforms
 //   every time tops out around ~400 posts/month, not 500. That gap is the
 //   deliberate upsell hook toward the Top1% Club plan, not a bug.
 export const PLAN_LIMITS = {
-  FREE:    { postsPerMonth: 5,   aiCredits: 25,   platforms: 1, teamMembers: 1 },
-  CREATOR: { postsPerMonth: 99,  aiCredits: 400,  platforms: 3, teamMembers: 1 },
+  FREE:    { postsPerMonth: 3,   aiCredits: 25,   platforms: 1, teamMembers: 1 },
+  CREATOR: { postsPerMonth: 100, aiCredits: 400,  platforms: 3, teamMembers: 1 },
   PRO:     { postsPerMonth: 500, aiCredits: 2000, platforms: 5, teamMembers: 1 },
   AGENCY:  { postsPerMonth: -1,  aiCredits: 5000, platforms: 6, teamMembers: 10 },
 } as const

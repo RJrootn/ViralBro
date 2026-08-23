@@ -12,17 +12,21 @@ import { PLAN_LIMITS } from '@/lib/api'
 
 export type PaidPlan = 'CREATOR' | 'PRO' | 'AGENCY'
 
-// Amount in paise (₹999 = 99900), matching Razorpay's smallest-unit convention.
+// Amount in paise (₹1,999 = 199900), matching Razorpay's smallest-unit convention.
 //
 // Finalized 2026-08-23 after a unit-economics review (see project doc
-// "vyralbro-pricing-unit-economics-2026-08-23"). All three paid tiers now
-// hold 63-82% margin even in the worst-case (near-token-cap) generation
-// cost scenario, thanks to the per-platform token budget cap in
-// generate.ts — margin no longer erodes as customers move up tiers, which
-// was the original problem with the ₹799/₹1,999/₹4,999 pricing.
+// "vyralbro-pricing-unit-economics-2026-08-23"). All three paid tiers hold
+// strong margin even in the worst-case (near-token-cap) generation cost
+// scenario — 88.0%/78.4%/63.4% worst-case, 89.7%/81.6%/69.1% typical, for
+// Creator/Pro/Top1% Club respectively — declining smoothly as plans go up,
+// the normal SaaS volume-discount pattern, rather than dipping and
+// recovering unevenly (an earlier ₹799/₹1,999/₹4,999 version had margin
+// erode on upgrade; a later ₹2,999 Creator draft had margin dip at the top
+// tier instead). Revenue per credit: ₹5.00 (Creator) -> ₹2.50 (Pro) ->
+// ₹1.40 (Top1% Club) — each tier a deliberate, moderate step down.
 export const PLAN_PRICES: Record<PaidPlan, number> = {
-  CREATOR: 99900,
-  PRO:     299900,
+  CREATOR: 199900,
+  PRO:     499900,
   AGENCY:  699900,
 }
 
