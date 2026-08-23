@@ -12,8 +12,11 @@ import { PLAN_LABELS } from '@/lib/billing/plans'
 
 function Bar({ used, limit }: { used: number; limit: number }) {
   // -1 means unlimited (Agency's postsPerMonth) — show a full, calm bar
-  // rather than a percentage that can't be computed.
-  const pct = limit === -1 ? 100 : Math.min(100, Math.round((used / Math.max(limit, 1)) * 100))
+  // rather than a percentage that can't be computed. Clamped to [0, 100] —
+  // `used` can go negative (see creditsUsed below) when a plan's credit
+  // allotment is lowered below a balance a user already holds; an
+  // unclamped negative width is invalid and renders inconsistently.
+  const pct = limit === -1 ? 100 : Math.max(0, Math.min(100, Math.round((used / Math.max(limit, 1)) * 100)))
   const color = limit === -1 ? '#25D366' : pct >= 90 ? '#F87171' : pct >= 70 ? '#FBBF24' : '#25D366'
   return (
     <div style={{ height: 5, borderRadius: 3, background: '#1E1E28', overflow: 'hidden' }}>
@@ -35,7 +38,14 @@ export default function UsageMeter() {
   const postsLabel = limits.postsPerMonth === -1
     ? `${usage.postsThisMonth} posts used · unlimited`
     : `${usage.postsThisMonth}/${limits.postsPerMonth} posts used this month`
-  const creditsUsed = limits.aiCredits - usage.aiCreditBalance
+  // Clamped at 0 — a user can hold a balance larger than the plan's current
+  // allotment (e.g. they were granted credits under a higher limit before
+  // a plan's allotment was lowered, or they downgraded with leftover
+  // balance from a bigger plan). Without the clamp this goes negative and
+  // renders as something like "-15/25 AI credits used", which reads as a
+  // bug rather than what it actually means: they have MORE credits
+  // available than the plan normally grants, not fewer.
+  const creditsUsed = Math.max(0, limits.aiCredits - usage.aiCreditBalance)
   const creditsLabel = `${creditsUsed}/${limits.aiCredits} AI credits used`
   const nearLimit = limits.postsPerMonth !== -1 && usage.postsThisMonth >= limits.postsPerMonth * 0.7
   const lowCredits = usage.aiCreditBalance <= limits.aiCredits * 0.15

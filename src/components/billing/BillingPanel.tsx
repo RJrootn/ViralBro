@@ -74,9 +74,14 @@ export default function BillingPanel() {
           <div style={{ fontSize: '0.8rem', color: '#7A7A90', marginTop: 4 }}>
             {/* Both figures read "used / limit" consistently — see UsageMeter.tsx
                 for why that matters (posts and credits used to use opposite
-                conventions and looked identical, which read as a bug to RJ). */}
+                conventions and looked identical, which read as a bug to RJ).
+                Credits-used is clamped at 0 — a stored balance can exceed
+                the plan's current allotment (e.g. a plan's credits were
+                lowered after the balance was granted), and an unclamped
+                negative number reads as a bug rather than "you actually
+                have more credits than this plan normally gives." */}
             {data.usage.postsThisMonth}{data.limits.postsPerMonth !== -1 ? `/${data.limits.postsPerMonth}` : ''} posts used this month ·{' '}
-            {data.limits.aiCredits - data.usage.aiCreditBalance}/{data.limits.aiCredits} AI credits used
+            {Math.max(0, data.limits.aiCredits - data.usage.aiCreditBalance)}/{data.limits.aiCredits} AI credits used
             {data.planExpiresAt && ` · renews ${new Date(data.planExpiresAt).toLocaleDateString()}`}
           </div>
         )}
