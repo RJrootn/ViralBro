@@ -30,6 +30,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { PLATFORM_COLORS_BY_ENUM, PLATFORM_LABELS } from '@/lib/constants/platforms'
 import { useConnectedAccounts } from '@/lib/hooks/useConnectedAccounts'
+import UsageMeter from '@/components/billing/UsageMeter'
 
 const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
@@ -118,8 +119,17 @@ export default function Sidebar() {
         <SbItem icon="💬" label="Comments" active={active === 'comments'} onClick={() => nav('comments')} />
         <SbItem icon="🔔" label="Notifications" active={active === 'notifications'} onClick={() => nav('notifications')} />
         <SbItem icon="⚙️" label="Settings" active={active === 'settings'} onClick={() => nav('settings')} />
+        {/* Client-side check is just to decide whether to show the link —
+            /admin and /api/admin/stats both re-check the real allowlist
+            server-side, so this hardcoded email grants no actual access. */}
+        {session?.user?.email?.toLowerCase() === 'rj@rootn.ai' && (
+          <SbItem icon="📊" label="Business Dashboard" active={pathname?.startsWith('/admin')} onClick={() => router.push('/admin')} />
+        )}
       </div>
-      <div style={{ padding: '12px 12px 8px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 'auto' }}>
+      <div style={{ marginTop: 'auto', paddingTop: 8 }}>
+        <UsageMeter />
+      </div>
+      <div style={{ padding: '12px 12px 8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#5A5A72', marginBottom: 10 }}>Connected Channels</div>
         {accounts.length === 0 && (
           <div style={{ fontSize: '0.72rem', color: '#5A5A72', marginBottom: 8 }}>None connected yet</div>

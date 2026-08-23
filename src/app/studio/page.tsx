@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import UsageMeter from '@/components/billing/UsageMeter'
+import LimitBanner from '@/components/billing/LimitBanner'
 
 const LANGUAGES = ['भारत', 'ভারত', 'భారత్', 'ಭಾರತ', 'भारत', 'বাংলা', 'India']
 
@@ -80,6 +82,11 @@ export default function StudioPage() {
   const [saved, setSaved] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
+  // Set when the AI-generate or publish call comes back 402 (plan limit
+  // reached) — rendered as a persistent banner with an Upgrade link rather
+  // than the usual 3-second toast, since "you're blocked, here's the fix"
+  // deserves more than a message that vanishes before anyone can act on it.
+  const [limitBanner, setLimitBanner] = useState('')
   const [langIdx, setLangIdx] = useState(0)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
@@ -176,6 +183,7 @@ export default function StudioPage() {
     setLoading(true)
     setPreviews({})
     setSaved(false)
+    setLimitBanner('')
 
     try {
       const res = await fetch('/api/ai/generate', {
@@ -198,6 +206,8 @@ export default function StudioPage() {
         })
         setPreviews(mapped)
         showToast(`✦ Adapted for ${platforms.length} platforms · ${data.data.creditsRemaining} credits left`)
+      } else if (res.status === 402) {
+        setLimitBanner(data.error ?? 'Plan limit reached')
       } else {
         showToast(data.error ?? 'Generation failed')
       }
@@ -248,6 +258,7 @@ export default function StudioPage() {
     }
 
     if (publishNow) setPublishing(true)
+    setLimitBanner('')
     showToast(publishNow ? 'Publishing…' : 'Saving draft…')
 
     try {
@@ -283,6 +294,8 @@ export default function StudioPage() {
         } else {
           setSaved(true)
         }
+      } else if (res.status === 402) {
+        setLimitBanner(data.error ?? 'Plan limit reached')
       } else {
         showToast(data.error ?? 'Something went wrong')
       }
@@ -340,6 +353,9 @@ export default function StudioPage() {
             </div>
           ))}
         </div>
+        <div style={{ marginTop: 'auto', padding: '0 6px' }}>
+          <UsageMeter />
+        </div>
         <div style={{ padding: '12px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 9 }}>
           <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg,#FF9933,#138808)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
             {session?.user?.name?.charAt(0) ?? 'R'}
@@ -356,6 +372,8 @@ export default function StudioPage() {
 
         {/* LEFT: Editor */}
         <div className="mobile-content-pad-top" style={{ borderRight: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', padding: '2rem 2rem 2rem 2.5rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+
+          {limitBanner && <LimitBanner message={limitBanner} onDismiss={() => setLimitBanner('')} />}
 
           {/* Header */}
           <div style={{ paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>

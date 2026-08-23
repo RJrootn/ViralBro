@@ -3,12 +3,7 @@ import { withErrorHandler, ok, err } from '@/lib/api'
 import { requireSession } from '@/lib/auth/session'
 import { db } from '@/lib/db/client'
 import type { Plan } from '@prisma/client'
-
-const PLAN_PRICES: Record<string, number> = {
-  CREATOR: 79900,
-  PRO:     199900,
-  AGENCY:  499900,
-}
+import { PLAN_PRICES } from '@/lib/billing/plans'
 
 const schema = z.object({
   plan: z.enum(['CREATOR', 'PRO', 'AGENCY']),
