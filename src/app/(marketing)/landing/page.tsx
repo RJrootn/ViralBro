@@ -1,5 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+// Cycles the nav badge through India's name in several of its own
+// languages — a small, honest way to show the multi-language angle right
+// at the top of the page, rather than only mentioning it in copy further
+// down. Same rotating-badge pattern already used in Studio's sidebar
+// (see LANGUAGES/langIdx in src/app/studio/page.tsx) — reused here rather
+// than inventing a second convention for the same idea.
+const INDIA_NAMES = ['भारत', 'ভারত', 'இந்தியா', 'భారత్', 'ಭಾರತ', 'ഇന്ത്യ', 'ਭਾਰਤ', 'India']
 
 export default function LandingPage() {
   const [email, setEmail] = useState('')
@@ -7,6 +15,12 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false)
 
   const [waitlistError, setWaitlistError] = useState('')
+  const [nameIdx, setNameIdx] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => setNameIdx(i => (i + 1) % INDIA_NAMES.length), 1800)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault()
@@ -47,15 +61,17 @@ export default function LandingPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <BharatFlag />
           <span style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>VyralBro</span>
-          <span className="landing-flag-badge" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px' }}>भारत</span>
+          <span className="landing-flag-badge" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: '#25D366', background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.2)', borderRadius: 20, padding: '2px 9px', minWidth: 44, textAlign: 'center' as const, transition: 'opacity 0.3s' }}>
+            {INDIA_NAMES[nameIdx]}
+          </span>
         </div>
         <div className="landing-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          {['Features', 'Pricing', 'Blog'].map(item => (
-            <span key={item} style={{ fontSize: '0.85rem', fontWeight: 500, color: '#8585A0', cursor: 'pointer', transition: 'color 0.2s' }}
+          {[{ label: 'Features', href: '#features' }, { label: 'Pricing', href: '#pricing' }, { label: 'Blog', href: '/blog' }].map(item => (
+            <a key={item.label} href={item.href} className="landing-nav-item" style={{ fontSize: '0.85rem', fontWeight: 500, color: '#8585A0', cursor: 'pointer', transition: 'color 0.2s', textDecoration: 'none' }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#F2F2F8'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#8585A0'}>
-              {item}
-            </span>
+              {item.label}
+            </a>
           ))}
           <a href="/login" className="landing-nav-btn" style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.11)', background: 'transparent', fontSize: '0.82rem', fontWeight: 600, color: '#F2F2F8', cursor: 'pointer', textDecoration: 'none', transition: 'all 0.2s', whiteSpace: 'nowrap' as const }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.3)'}
@@ -187,7 +203,7 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 1100, margin: '0 auto' }}>
+      <section id="features" style={{ position: 'relative', zIndex: 1, padding: '100px 5%', maxWidth: 1100, margin: '0 auto', scrollMarginTop: 60 }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Why VyralBro</div>
           <h2 style={{ fontWeight: 900, fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
@@ -286,7 +302,7 @@ export default function LandingPage() {
       </section>
 
       {/* PRICING */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '80px 5%', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <section id="pricing" style={{ position: 'relative', zIndex: 1, padding: '80px 5%', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', scrollMarginTop: 60 }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 16 }}>Pricing</div>

@@ -77,11 +77,21 @@ export default function StudioPage() {
   const [raw, setRaw] = useState('Sharing 5 lessons from building a profitable SaaS from ₹0 in India — bootstrapped, no VC, profitable in 6 months. Indian B2B is different. Pricing, trust, first customers — here\'s what nobody tells you.')
   const [tone, setTone] = useState('Authentic')
   const [format, setFormat] = useState('Listicle')
-  const [language, setLanguage] = useState('🇮🇳 English')
+  // Multiple languages can be selected at once — generate() fires one
+  // /api/ai/generate call per selected language (each independently and
+  // atomically credit-checked server-side, so this can't double-spend or
+  // under-charge), and previews are kept per-language so nothing overwrites
+  // anything else. activeLanguage controls which language's set of
+  // platform previews is currently shown/edited/published — see
+  // currentPreviews below.
+  const [languages, setLanguages] = useState<string[]>(['🇮🇳 English'])
+  const [activeLanguage, setActiveLanguage] = useState('🇮🇳 English')
   const [platforms, setPlatforms] = useState(['instagram', 'twitter', 'linkedin', 'youtube', 'facebook', 'whatsapp'])
   const [schedule, setSchedule] = useState('Post now')
   const [loading, setLoading] = useState(false)
-  const [previews, setPreviews] = useState<Record<string, PlatformOutput>>({})
+  // Keyed by language, then platform — was a flat Record<platform, ...>
+  // when only one language could be picked at a time.
+  const [previews, setPreviews] = useState<Record<string, Record<string, PlatformOutput>>>({})
   const [saved, setSaved] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
@@ -126,6 +136,16 @@ export default function StudioPage() {
   const togglePlatform = (p: string) => {
     setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
   }
+
+  const toggleLanguage = (l: string) => {
+    setLanguages(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])
+  }
+
+  // The platform previews currently shown/edited/published — scoped to
+  // whichever language tab is active. Everything below that used to read
+  // the old flat `previews` (edit textarea, publish payload, empty-state
+  // checks) now reads this instead.
+  const currentPreviews = previews[activeLanguage] ?? {}
 
   // Upload flow: ask our API for a presigned S3 PUT URL, then PUT the file
   // bytes straight to S3 from the browser (never through our own server —
@@ -183,12 +203,18 @@ export default function StudioPage() {
   const generate = async () => {
     if (!raw.trim()) { showToast('Write your idea first'); return }
     if (platforms.length === 0) { showToast('Pick at least one platform'); return }
+    if (languages.length === 0) { showToast('Pick at least one language'); return }
     setLoading(true)
     setPreviews({})
     setSaved(false)
     setLimitBanner('')
 
-    try {
+    // One call per selected language, in parallel — each independently and
+    // atomically credit-checked server-side (see reserveCredits in
+    // /api/ai/generate), so there's no double-spend risk running these
+    // concurrently, and one language running out of credits doesn't block
+    // the others from succeeding.
+    const settled = await Promise.allSettled(languages.map(async lang => {
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,27 +222,48 @@ export default function StudioPage() {
           rawContent: raw,
           tone,
           format,
-          language: LANG_CODE[language] ?? language,
+          language: LANG_CODE[lang] ?? lang,
           platforms: platforms.map(p => p.toUpperCase()),
         }),
       })
       const data = await res.json()
+      return { lang, status: res.status, data }
+    }))
+
+    const nextPreviews: Record<string, Record<string, PlatformOutput>> = {}
+    let creditsRemaining: number | null = null
+    let limitHit = ''
+    let hardError = ''
+
+    for (const outcome of settled) {
+      if (outcome.status !== 'fulfilled') { hardError = 'Error connecting to AI — check your API key'; continue }
+      const { lang, status, data } = outcome.value
       if (data.success) {
         const gen = data.data.generated
         const mapped: Record<string, PlatformOutput> = {}
-        platforms.forEach(p => {
-          if (gen[p.toUpperCase()]) mapped[p] = gen[p.toUpperCase()]
-        })
-        setPreviews(mapped)
-        showToast(`✦ Adapted for ${platforms.length} platforms · ${data.data.creditsRemaining} credits left`)
-      } else if (res.status === 402) {
-        setLimitBanner(data.error ?? 'Plan limit reached')
+        platforms.forEach(p => { if (gen[p.toUpperCase()]) mapped[p] = gen[p.toUpperCase()] })
+        nextPreviews[lang] = mapped
+        creditsRemaining = data.data.creditsRemaining
+      } else if (status === 402) {
+        limitHit = data.error ?? 'Plan limit reached'
       } else {
-        showToast(data.error ?? 'Generation failed')
+        hardError = data.error ?? `Generation failed for ${lang}`
       }
-    } catch (e) {
-      showToast('Error connecting to AI — check your API key')
     }
+
+    setPreviews(nextPreviews)
+    const succeededLangs = Object.keys(nextPreviews)
+    if (succeededLangs.length > 0) {
+      setActiveLanguage(prev => nextPreviews[prev] ? prev : succeededLangs[0])
+      const totalPosts = succeededLangs.reduce((n, l) => n + Object.keys(nextPreviews[l]).length, 0)
+      showToast(
+        `✦ Adapted ${totalPosts} post${totalPosts > 1 ? 's' : ''} across ${succeededLangs.length} language${succeededLangs.length > 1 ? 's' : ''}` +
+        (creditsRemaining !== null ? ` · ${creditsRemaining} credits left` : '')
+      )
+    } else if (hardError) {
+      showToast(hardError)
+    }
+    if (limitHit) setLimitBanner(limitHit)
     setLoading(false)
   }
 
@@ -225,7 +272,7 @@ export default function StudioPage() {
   // a socialAccountId per platform entry — there's nothing to publish to
   // otherwise).
   const buildPlatformPayload = () => {
-    const entries = Object.entries(previews)
+    const entries = Object.entries(currentPreviews)
     const publishable = entries
       .map(([key, d]) => ({ key, d, account: accountFor(key) }))
       .filter(x => !!x.account)
@@ -244,7 +291,7 @@ export default function StudioPage() {
   }
 
   const submitPost = async (publishNow: boolean) => {
-    if (Object.keys(previews).length === 0) { showToast('Generate content first'); return }
+    if (Object.keys(currentPreviews).length === 0) { showToast('Generate content first'); return }
     const { platforms: payloadPlatforms, skipped } = buildPlatformPayload()
     if (payloadPlatforms.length === 0) {
       showToast('None of these platforms are connected yet — go to Settings to connect one')
@@ -272,7 +319,7 @@ export default function StudioPage() {
           rawContent: raw,
           tone,
           format,
-          language,
+          language: activeLanguage,
           publishNow,
           platforms: payloadPlatforms,
         }),
@@ -281,18 +328,29 @@ export default function StudioPage() {
       if (data.success) {
         const note = skipped > 0 ? ` (${skipped} platform${skipped > 1 ? 's' : ''} skipped — not connected)` : ''
         showToast(publishNow
-          ? `🚀 Queued for ${payloadPlatforms.length} platform${payloadPlatforms.length > 1 ? 's' : ''}${note}`
+          ? `🚀 Queued for ${payloadPlatforms.length} platform${payloadPlatforms.length > 1 ? 's' : ''} in ${activeLanguage}${note}`
           : `Draft saved ✓${note}`)
         if (publishNow) {
-          // Clear the form after a successful publish rather than leaving
-          // the same idea/media/previews sitting there — previously nothing
-          // reset here, so clicking "Publish All" again (or even just
-          // glancing back at the form) made it look like the same post
-          // hadn't gone out, and re-clicking created a genuine duplicate.
-          setRaw('')
-          setPreviews({})
-          setMedia([])
-          setMediaType('IMAGE')
+          // Only clear the language that was just published — if other
+          // selected languages still have unpublished previews sitting
+          // there (the whole point of generating several at once), switch
+          // to the next one instead of wiping everything. Only reset the
+          // full form once every generated language has been published.
+          const remaining = languages.filter(l => l !== activeLanguage && previews[l])
+          setPreviews(prev => {
+            const rest = { ...prev }
+            delete rest[activeLanguage]
+            return rest
+          })
+          if (remaining.length > 0) {
+            setActiveLanguage(remaining[0])
+          } else {
+            setRaw('')
+            setMedia([])
+            setMediaType('IMAGE')
+            setLanguages(['🇮🇳 English'])
+            setActiveLanguage('🇮🇳 English')
+          }
           setSaved(false)
         } else {
           setSaved(true)
@@ -382,7 +440,7 @@ export default function StudioPage() {
           <div style={{ paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' as const, color: '#FF9933', marginBottom: 6 }}>✦ Creator Studio</div>
             <div style={{ fontWeight: 900, fontSize: '1.6rem', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Write once.<br /><span style={{ color: '#FF9933', fontStyle: 'italic' }}>Reach Bharat.</span></div>
-            <div style={{ fontSize: '0.82rem', color: '#7A7A90', marginTop: 5 }}>One idea → 6 platforms, AI-adapted in your voice & language.</div>
+            <div style={{ fontSize: '0.82rem', color: '#7A7A90', marginTop: 5 }}>One idea → 6 platforms, multiple languages, all AI-adapted in your voice.</div>
           </div>
 
           {/* Content idea */}
@@ -419,14 +477,21 @@ export default function StudioPage() {
             </div>
           </div>
 
-          {/* Language */}
+          {/* Language — multi-select: pick more than one and Generate builds
+              a full, independent set of platform posts per language, kept
+              on separate tabs above the preview panel. */}
           <div>
-            <FieldLabel num="04" label="Language" />
+            <FieldLabel num="04" label="Language(s)" />
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
               {['🇮🇳 English', 'हि Hindi', 'த Tamil', 'ಕ Kannada', 'తె Telugu', 'বাং Bengali', 'मर Marathi'].map(l => (
-                <Pill key={l} label={l} active={language === l} onClick={() => setLanguage(l)} color="green" />
+                <Pill key={l} label={l} active={languages.includes(l)} onClick={() => toggleLanguage(l)} color="green" />
               ))}
             </div>
+            {languages.length > 1 && (
+              <div style={{ fontSize: '0.7rem', color: '#5A5A72', marginTop: 6 }}>
+                Generates a separate set of platform posts per language — switch between them from the tabs above the preview, and publish each when it&apos;s ready.
+              </div>
+            )}
           </div>
 
           {/* Platforms */}
@@ -520,7 +585,7 @@ export default function StudioPage() {
                 : <>✦ Generate with AI</>}
             </button>
 
-            {Object.keys(previews).length > 0 && (
+            {Object.keys(currentPreviews).length > 0 && (
               <>
                 <button onClick={saveDraft}
                   style={{ padding: '11px 22px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.11)', background: '#18181F', color: saved ? '#34D399' : '#F0F0F8', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -551,6 +616,20 @@ export default function StudioPage() {
             <div style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,153,51,0.1)', border: '1px solid rgba(255,153,51,0.25)', color: '#FF9933', letterSpacing: '0.06em' }}>✦ AI Adapted</div>
           </div>
 
+          {/* Language tabs — only shown once more than one language has
+              actually been generated, so the common single-language case
+              stays exactly as uncluttered as before. */}
+          {Object.keys(previews).length > 1 && (
+            <div style={{ display: 'flex', gap: 6, padding: '10px 1.5rem 0', flexWrap: 'wrap' as const, flexShrink: 0 }}>
+              {Object.keys(previews).map(l => (
+                <button key={l} onClick={() => setActiveLanguage(l)}
+                  style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${activeLanguage === l ? 'rgba(255,153,51,0.4)' : 'rgba(255,255,255,0.11)'}`, background: activeLanguage === l ? 'rgba(255,153,51,0.12)' : 'transparent', color: activeLanguage === l ? '#FF9933' : '#7A7A90', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {loading && platforms.map((p, i) => (
               <div key={p} style={{ background: '#18181F', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '12px 14px', animationDelay: `${i * 0.08}s` }}>
@@ -561,7 +640,7 @@ export default function StudioPage() {
               </div>
             ))}
 
-            {!loading && Object.keys(previews).length === 0 && (
+            {!loading && Object.keys(currentPreviews).length === 0 && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#3A3A52', textAlign: 'center' as const, padding: '2rem' }}>
                 <div style={{ fontSize: '2.5rem' }}>✦</div>
                 <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#5A5A72' }}>Your previews will appear here</div>
@@ -570,7 +649,7 @@ export default function StudioPage() {
             )}
 
             {!loading && platforms.map(p => {
-              const d = previews[p]
+              const d = currentPreviews[p]
               if (!d) return null
               const lim = PM[p]
               const len = d.text?.length ?? 0
@@ -603,7 +682,10 @@ export default function StudioPage() {
                         exactly what gets sent as `adaptedText` on publish. */}
                     <textarea
                       value={d.text ?? ''}
-                      onChange={e => setPreviews(prev => ({ ...prev, [p]: { ...prev[p], text: e.target.value } }))}
+                      onChange={e => setPreviews(prev => ({
+                        ...prev,
+                        [activeLanguage]: { ...prev[activeLanguage], [p]: { ...prev[activeLanguage]?.[p], text: e.target.value } },
+                      }))}
                       rows={6}
                       style={{ width: '100%', fontSize: '0.82rem', lineHeight: 1.65, color: '#F0F0F8', whiteSpace: 'pre-wrap', background: 'transparent', border: '1px solid transparent', borderRadius: 8, padding: '2px 4px', margin: '-2px -4px', resize: 'vertical' as const, fontFamily: 'inherit' }}
                       onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.12)'}

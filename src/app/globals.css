@@ -145,7 +145,10 @@
      thing to go on a narrow screen — Sign in / Start free stay since those
      are the actual conversion buttons, but they still need to shrink and
      stay on one line or "Start free →" wraps its arrow onto its own line. */
-  .landing-nav-links > span { display: none !important; }
+  /* Was `> span` when Features/Pricing/Blog were dead, unclickable <span>s —
+     they're real <a> links now (see landing/page.tsx), so the selector
+     targets the class instead of the tag to keep hiding them on mobile. */
+  .landing-nav-links .landing-nav-item { display: none !important; }
   .landing-nav-links { gap: 8px !important; }
   .landing-nav-btn { padding: 6px 12px !important; font-size: 0.74rem !important; }
 
