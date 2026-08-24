@@ -8,46 +8,13 @@
 [build.environment]
   NETLIFY_NEXT_PLUGIN_SKIP = "false"
 
-# www.vyralbro.in has been Netlify's own primary domain since before the app
-# moved to Railway (this site still auto-deploys on every push to main, in
-# parallel with Railway, via the same GitHub connection — nobody disconnected
-# it during the migration). The two deployments run the same code but have
-# fully separate environment config: this Netlify site was never given a
-# working Redis connection (Railway's Redis is on Railway's private network,
-# unreachable from Netlify's Lambda functions), so anything that touches the
-# publish queue (e.g. POST /api/posts) crashes here with a raw 500 — while
-# everything that doesn't touch Redis (login, Studio, AI generate, billing)
-# happens to work fine, which is exactly why this went unnoticed until a
-# customer's browser landed on www.vyralbro.in instead of the apex domain.
-#
-# Fix: redirect all www traffic straight to the apex domain (which points at
-# the real, current Railway deployment) before Netlify's own Next.js function
-# ever runs. This must stay in place unless/until www.vyralbro.in's DNS is
-# actually repointed away from this Netlify site — removing it without also
-# fixing DNS would bring the broken duplicate deployment right back.
-#
-# EXCEPTION: NextAuth's own routes (/api/auth/*) must NOT be swept into that
-# redirect. A Google sign-in that begins on www.vyralbro.in sets its
-# CSRF/state cookie scoped to that exact host, then Google redirects back to
-# .../api/auth/callback/google on that same host to complete the flow. If the
-# blanket redirect below caught that callback too, it would bounce the
-# one-time authorization code over to the apex domain *before* NextAuth ever
-# saw it — apex has no matching state cookie (it was only ever set on www),
-# so validation fails and NextAuth's own recovery redirect loops right back
-# into this same rule, forever (exactly what happened: real incident, right
-# after this file's redirect first shipped — ERR_TOO_MANY_REDIRECTS on
-# /api/auth/callback/google). This rule is listed first and rewrites (not
-# redirects — status 200, no host change) so matching requests stop here and
-# reach Netlify's own NextAuth handler normally, same as before the redirect
-# below existed. Netlify evaluates redirect rules top-to-bottom and stops at
-# the first match, so this must stay above the general www→apex rule.
-[[redirects]]
-  from = "https://www.vyralbro.in/api/auth/*"
-  to = "/api/auth/:splat"
-  status = 200
-
-[[redirects]]
-  from = "https://www.vyralbro.in/*"
-  to = "https://vyralbro.in/:splat"
-  status = 301
-  force = true
+# REVERTED 2026-08-24: a www.vyralbro.in -> vyralbro.in redirect briefly
+# lived here (two commits, now reverted) to route around a duplicate,
+# Redis-less Netlify deployment answering www traffic. It caused a full
+# site outage: vyralbro.in itself redirects to www.vyralbro.in somewhere
+# ahead of this file (Netlify's own domain/alias config, not anything in
+# this repo), so the www -> apex rule fought that and looped forever, on
+# every request, cookies or not. Reverting to stop the outage. Real fix
+# needs the actual domain/alias setup checked directly in Netlify's
+# dashboard before any redirect is reintroduced here — see
+# vyralbro-netlify-railway-domain-split-2026-08-24.md.
