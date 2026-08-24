@@ -7,3 +7,26 @@
 
 [build.environment]
   NETLIFY_NEXT_PLUGIN_SKIP = "false"
+
+# www.vyralbro.in has been Netlify's own primary domain since before the app
+# moved to Railway (this site still auto-deploys on every push to main, in
+# parallel with Railway, via the same GitHub connection — nobody disconnected
+# it during the migration). The two deployments run the same code but have
+# fully separate environment config: this Netlify site was never given a
+# working Redis connection (Railway's Redis is on Railway's private network,
+# unreachable from Netlify's Lambda functions), so anything that touches the
+# publish queue (e.g. POST /api/posts) crashes here with a raw 500 — while
+# everything that doesn't touch Redis (login, Studio, AI generate, billing)
+# happens to work fine, which is exactly why this went unnoticed until a
+# customer's browser landed on www.vyralbro.in instead of the apex domain.
+#
+# Fix: redirect all www traffic straight to the apex domain (which points at
+# the real, current Railway deployment) before Netlify's own Next.js function
+# ever runs. This must stay in place unless/until www.vyralbro.in's DNS is
+# actually repointed away from this Netlify site — removing it without also
+# fixing DNS would bring the broken duplicate deployment right back.
+[[redirects]]
+  from = "https://www.vyralbro.in/*"
+  to = "https://vyralbro.in/:splat"
+  status = 301
+  force = true
