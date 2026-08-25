@@ -35,16 +35,32 @@ export const PLATFORM_FORMAT: Record<SocialPlatform, string> = {
 // ~₹7.80 per call no matter how little content was actually needed. See the
 // unit-economics review (project doc "vyralbro-pricing-unit-economics-2026-08-23")
 // for why this mattered enough to fix alongside the Creator price change.
+//
+// 2026-08-25: bumped after real production failures — a single-platform
+// Instagram "Story arc" generation (multi-paragraph caption + 10 hashtags +
+// a tip field) hit the old 700-token budget's ceiling and got cut off mid-
+// response. The original sizing also didn't account for output language:
+// non-Latin scripts (Hindi, Tamil, Kannada, Bengali, Marathi, etc.) take
+// meaningfully more tokens per character than English for the same amount
+// of actual content, so the same budget that's fine in English can overflow
+// in these languages — see NON_ENGLISH_TOKEN_MULTIPLIER below.
 const PLATFORM_TOKEN_BUDGET: Record<SocialPlatform, number> = {
-  INSTAGRAM: 700,
-  TWITTER:   150,
-  LINKEDIN:  850,
-  YOUTUBE:   200,
-  FACEBOOK:  600,
-  WHATSAPP:  300,
+  INSTAGRAM: 1000,
+  TWITTER:   220,
+  LINKEDIN:  1200,
+  YOUTUBE:   300,
+  FACEBOOK:  900,
+  WHATSAPP:  450,
 }
 
-const GENERATION_TOKEN_OVERHEAD = 200 // JSON/tool-call structure overhead, roughly constant regardless of platform count
+// Applied to the platform-budget sum (not the JSON overhead) whenever the
+// requested output language isn't English, to cover non-Latin scripts'
+// lower tokens-per-character efficiency. Deliberately uniform rather than
+// per-language — better to slightly over-budget a language that would have
+// fit than to hard-fail mid-generation for a paying customer.
+const NON_ENGLISH_TOKEN_MULTIPLIER = 1.6
+
+const GENERATION_TOKEN_OVERHEAD = 250 // JSON/tool-call structure overhead, roughly constant regardless of platform count
 const MAX_TOKENS_CEILING = 8000       // absolute safety ceiling, unchanged — the per-platform budget should stay well under this in practice
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -121,10 +137,12 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
   }
 
   // Sized to what was actually requested, capped at MAX_TOKENS_CEILING as a
-  // hard backstop — see PLATFORM_TOKEN_BUDGET above.
+  // hard backstop — see PLATFORM_TOKEN_BUDGET and NON_ENGLISH_TOKEN_MULTIPLIER above.
+  const platformBudget = platforms.reduce((sum, p) => sum + PLATFORM_TOKEN_BUDGET[p], 0)
+  const languageMultiplier = language === 'en' ? 1 : NON_ENGLISH_TOKEN_MULTIPLIER
   const maxTokens = Math.min(
     MAX_TOKENS_CEILING,
-    GENERATION_TOKEN_OVERHEAD + platforms.reduce((sum, p) => sum + PLATFORM_TOKEN_BUDGET[p], 0),
+    GENERATION_TOKEN_OVERHEAD + Math.ceil(platformBudget * languageMultiplier),
   )
 
   const response = await client.messages.create({
