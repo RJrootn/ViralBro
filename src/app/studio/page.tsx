@@ -176,6 +176,16 @@ export default function StudioPage() {
   // checks) now reads this instead.
   const currentPreviews = previews[activeLanguage] ?? {}
 
+  // "Publish All" only ever publishes the currently active language tab
+  // (see submitPost below) — despite the name, it does not mean "every
+  // generated language." Surfaced explicitly in the UI after real confusion
+  // in production: RJ generated 5 languages, clicked Publish All expecting
+  // all 5 to queue, and only the active tab did. The intended flow is one
+  // publish per language, switching tabs in between (submitPost already
+  // auto-advances to the next unpublished language) — this just makes that
+  // visible instead of implied by the button's misleading label.
+  const otherLanguagesReady = languages.filter(l => l !== activeLanguage && previews[l]).length
+
   // Upload flow: ask our API for a presigned S3 PUT URL, then PUT the file
   // bytes straight to S3 from the browser (never through our own server —
   // Netlify functions cap request bodies well below Reels-length video).
@@ -699,12 +709,19 @@ export default function StudioPage() {
                   {saved ? '✓ Saved' : '💾 Save Draft'}
                 </button>
                 <button onClick={publishAll} disabled={publishing}
+                  title={`Publishes ${activeLanguage} only. Switch language tabs above to publish the others.`}
                   style={{ padding: '11px 22px', borderRadius: 12, border: '1px solid rgba(19,136,8,0.4)', background: 'rgba(19,136,8,0.08)', color: '#25D366', fontFamily: 'system-ui', fontSize: '0.88rem', fontWeight: 600, cursor: publishing ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {publishing ? <><Spinner color="#25D366" /> Publishing…</> : '🚀 Publish All'}
+                  {publishing ? <><Spinner color="#25D366" /> Publishing…</> : `🚀 Publish ${activeLanguage}`}
                 </button>
               </>
             )}
           </div>
+
+          {otherLanguagesReady > 0 && (
+            <div style={{ fontSize: '0.78rem', color: '#7A7A90', marginTop: -6 }}>
+              This publishes <strong style={{ color: '#F0F0F8' }}>{activeLanguage}</strong> only — {otherLanguagesReady} more language{otherLanguagesReady > 1 ? 's' : ''} ready above. Switch tabs and publish each one.
+            </div>
+          )}
 
           {atPostCap && (
             <div style={{ fontSize: '0.78rem', color: '#FF9933', fontWeight: 600 }}>
