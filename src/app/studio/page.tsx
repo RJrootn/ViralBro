@@ -240,7 +240,16 @@ export default function StudioPage() {
   // error instead of spinning silently, and a concurrency cap so a big
   // multi-language request doesn't throw everything at the backend at
   // once in the first place.
-  const GENERATE_TIMEOUT_MS = 45000
+  //
+  // 2026-08-25: raised from 45s to 90s. Real production generations (non-
+  // English, richer formats, larger post-fix token budgets) were routinely
+  // taking 30-40s server-side, leaving almost no margin — one hit exactly
+  // 45.0s and got killed by this timeout client-side while the server was
+  // still legitimately working. The backend can now also retry once
+  // internally on a too-small token budget (see src/lib/ai/generate.ts),
+  // which costs a second round-trip — 90s covers a slow single attempt or
+  // a normal one plus a retry.
+  const GENERATE_TIMEOUT_MS = 90000
   const GENERATE_CONCURRENCY = 2
 
   const generate = async () => {

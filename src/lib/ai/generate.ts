@@ -140,38 +140,56 @@ Before calling the tool, check every "text" field: is it written 100% in ${langu
   // hard backstop — see PLATFORM_TOKEN_BUDGET and NON_ENGLISH_TOKEN_MULTIPLIER above.
   const platformBudget = platforms.reduce((sum, p) => sum + PLATFORM_TOKEN_BUDGET[p], 0)
   const languageMultiplier = language === 'en' ? 1 : NON_ENGLISH_TOKEN_MULTIPLIER
-  const maxTokens = Math.min(
+  const initialMaxTokens = Math.min(
     MAX_TOKENS_CEILING,
     GENERATION_TOKEN_OVERHEAD + Math.ceil(platformBudget * languageMultiplier),
   )
 
-  const response = await client.messages.create({
-    model:      'claude-sonnet-5',
-    max_tokens: maxTokens,
-    // Disabled intentionally: this is a formatting task, not a reasoning one,
-    // and on Sonnet 5 thinking tokens count against max_tokens — leaving it
-    // on would eat into the actual response budget for no benefit here.
-    thinking:   { type: 'disabled' },
-    system:     systemPrompt,
-    messages:   [{ role: 'user', content: userPrompt }],
-    tools: [{
-      name: 'return_adapted_content',
-      description: 'Return the platform-adapted social media content.',
-      input_schema: {
-        type: 'object',
-        properties: Object.fromEntries(platforms.map(p => [p, platformOutputSchema])),
-        required: platforms,
-        additionalProperties: false,
-      },
-    }],
-    tool_choice: { type: 'tool', name: 'return_adapted_content' },
-  })
+  // Even a generous budget estimate is still an estimate — actual output
+  // length varies generation to generation (same language, same platforms)
+  // depending on how much the model has to say. Rather than fail outright
+  // the first time a specific generation runs long, retry once with a
+  // bumped budget before giving up. This caught a real case in production:
+  // Kannada still hit the (already-raised) budget once even after the
+  // 2026-08-25 fix above, while five other languages in the same batch
+  // were fine.
+  let maxTokens = initialMaxTokens
+  let response = await requestGeneration(maxTokens)
+
+  if (response.stop_reason === 'max_tokens' && maxTokens < MAX_TOKENS_CEILING) {
+    maxTokens = Math.min(MAX_TOKENS_CEILING, Math.ceil(maxTokens * 1.5))
+    response = await requestGeneration(maxTokens)
+  }
 
   if (response.stop_reason === 'max_tokens') {
     throw new Error(
-      `AI response was cut off before finishing (hit the ${maxTokens}-token limit for this generation). ` +
+      `AI response was cut off before finishing (hit the ${maxTokens}-token limit for this generation, after retrying once with a larger budget). ` +
       `Try fewer platforms per generation, or shorten the input draft.`
     )
+  }
+
+  async function requestGeneration(tokens: number) {
+    return client.messages.create({
+      model:      'claude-sonnet-5',
+      max_tokens: tokens,
+      // Disabled intentionally: this is a formatting task, not a reasoning one,
+      // and on Sonnet 5 thinking tokens count against max_tokens — leaving it
+      // on would eat into the actual response budget for no benefit here.
+      thinking:   { type: 'disabled' },
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: userPrompt }],
+      tools: [{
+        name: 'return_adapted_content',
+        description: 'Return the platform-adapted social media content.',
+        input_schema: {
+          type: 'object',
+          properties: Object.fromEntries(platforms.map(p => [p, platformOutputSchema])),
+          required: platforms,
+          additionalProperties: false,
+        },
+      }],
+      tool_choice: { type: 'tool', name: 'return_adapted_content' },
+    })
   }
 
   const toolUse = response.content.find((b: any) => b.type === 'tool_use')
