@@ -27,7 +27,7 @@
 //   AllowedMethods: ["PUT"], AllowedOrigins: ["https://vyralbro.netlify.app"],
 //   AllowedHeaders: ["*"]
 
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl }               from '@aws-sdk/s3-request-presigner'
 
 const REGION = process.env.VYRALBRO_AWS_REGION!
@@ -87,4 +87,21 @@ export async function presignUpload(
   const publicUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`
 
   return { uploadUrl, publicUrl, key }
+}
+
+// Used by the video-normalization step (see src/lib/media/normalizeVideo.ts)
+// to pull a just-uploaded file back down for processing.
+export async function downloadObject(key: string): Promise<Buffer> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }))
+  const stream = res.Body as AsyncIterable<Uint8Array>
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+  return Buffer.concat(chunks)
+}
+
+// Uploads a processed file (e.g. a normalized video) under a new key and
+// returns its public URL, same shape as presignUpload's publicUrl.
+export async function uploadBuffer(key: string, contentType: string, body: Buffer): Promise<string> {
+  await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType }))
+  return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`
 }

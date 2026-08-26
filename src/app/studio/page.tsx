@@ -204,7 +204,7 @@ export default function StudioPage() {
         showToast(presignData.error ?? 'Could not prepare upload')
         return
       }
-      const { uploadUrl, publicUrl } = presignData.data
+      const { uploadUrl, publicUrl, key } = presignData.data
 
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
@@ -218,11 +218,36 @@ export default function StudioPage() {
         xhr.send(file)
       })
 
-      setMedia(prev => [...prev, { url: publicUrl, contentType: file.type, name: file.name }])
+      let finalUrl = publicUrl
+      let finalContentType = file.type
+      const isVideo = file.type.startsWith('video/')
+
+      if (isVideo) {
+        // Videos need a normalization pass before they're safe to hand to
+        // Instagram — see /api/media/complete for why. This runs after the
+        // upload finishes, not before, since the raw file has to already be
+        // in S3 for the server to pull it back down and process it.
+        setUploadPct(100)
+        showToast('Processing video…')
+        const completeRes = await fetch('/api/media/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, contentType: file.type, publicUrl }),
+        })
+        const completeData = await completeRes.json()
+        if (!completeData.success) {
+          showToast(completeData.error ?? 'Could not process video')
+          return
+        }
+        finalUrl = completeData.data.publicUrl
+        finalContentType = 'video/mp4'
+      }
+
+      setMedia(prev => [...prev, { url: finalUrl, contentType: finalContentType, name: file.name }])
       // Auto-pick a sensible media type from the file if the user hasn't
       // already chosen something more specific (e.g. they picked "Reel"
       // before selecting the file — don't stomp that).
-      if (file.type.startsWith('video/') && mediaType === 'IMAGE') setMediaType('VIDEO')
+      if (isVideo && mediaType === 'IMAGE') setMediaType('VIDEO')
       showToast(`✓ Uploaded ${file.name}`)
     } catch (e: any) {
       showToast(e.message ?? 'Upload failed')
