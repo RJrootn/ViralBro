@@ -1,8 +1,0 @@
-# Adds ffmpeg to the build/runtime image. Required by
-# src/lib/media/normalizeVideo.ts, which shells out to the `ffmpeg` binary
-# to fix videos Instagram's Graph API otherwise rejects (see that file for
-# the full explanation). Railway builds this repo with Nixpacks by default
-# (no Dockerfile) — this file adds ffmpeg on top of whatever Nixpacks
-# already detects for the Node/Next.js app, it doesn't replace it.
-[phases.setup]
-nixPkgs = ["ffmpeg"]
