@@ -271,6 +271,85 @@ async function publishInstagramCarousel(
   }
 }
 
+// ── Twitter/X media upload (v2 chunked) ───────────────────────────────────
+// Media used to require the old v1.1 upload.twitter.com endpoint (OAuth
+// 1.0a only), which is why this was previously skipped entirely — every
+// post with an image or video silently went out as text-only. X has since
+// added a v2 endpoint that accepts the same OAuth 2.0 user-context bearer
+// token already used to post tweets, so no separate auth flow is needed —
+// just the `media.write` scope (see src/app/api/platforms/twitter/route.ts;
+// accounts connected before that scope was added need to reconnect once).
+const TWITTER_UPLOAD_URL = 'https://api.x.com/2/media/upload'
+const TWITTER_CHUNK_SIZE = 4 * 1024 * 1024 // 4MB — under X's 5MB-per-chunk cap
+const TWITTER_PROCESSING_TIMEOUT_MS = 120_000
+
+async function uploadTwitterMedia(token: string, mediaUrl: string): Promise<string> {
+  const authHeader = { Authorization: `Bearer ${token}` }
+
+  const mediaRes = await fetch(mediaUrl)
+  if (!mediaRes.ok) throw new Error(`Could not fetch media for Twitter upload (${mediaRes.status})`)
+  const contentType = mediaRes.headers.get('content-type') ?? (isVideoUrl(mediaUrl) ? 'video/mp4' : 'image/jpeg')
+  const buf = Buffer.from(await mediaRes.arrayBuffer())
+  const mediaCategory =
+    contentType.startsWith('video/') ? 'tweet_video' :
+    contentType === 'image/gif'      ? 'tweet_gif'   :
+                                        'tweet_image'
+
+  async function call(params: Record<string, string>, body?: FormData) {
+    const url = params.command === 'STATUS'
+      ? `${TWITTER_UPLOAD_URL}?${new URLSearchParams(params)}`
+      : TWITTER_UPLOAD_URL
+    const res = await fetch(url, {
+      method:  params.command === 'STATUS' ? 'GET' : 'POST',
+      headers: authHeader,
+      body:    params.command === 'STATUS' ? undefined : body,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.detail ?? data.errors?.[0]?.message ?? `Twitter media ${params.command} failed`)
+    return data
+  }
+
+  const initForm = new FormData()
+  initForm.set('command', 'INIT')
+  initForm.set('media_type', contentType)
+  initForm.set('total_bytes', String(buf.length))
+  initForm.set('media_category', mediaCategory)
+  const initData = await call({ command: 'INIT' }, initForm)
+  const mediaId = initData.data?.id
+  if (!mediaId) throw new Error('Twitter media INIT did not return a media id')
+
+  for (let offset = 0, segmentIndex = 0; offset < buf.length; offset += TWITTER_CHUNK_SIZE, segmentIndex++) {
+    const appendForm = new FormData()
+    appendForm.set('command', 'APPEND')
+    appendForm.set('media_id', mediaId)
+    appendForm.set('segment_index', String(segmentIndex))
+    appendForm.set('media', new Blob([buf.subarray(offset, offset + TWITTER_CHUNK_SIZE)]))
+    await call({ command: 'APPEND' }, appendForm)
+  }
+
+  const finalizeForm = new FormData()
+  finalizeForm.set('command', 'FINALIZE')
+  finalizeForm.set('media_id', mediaId)
+  const finalizeData = await call({ command: 'FINALIZE' }, finalizeForm)
+
+  // Images finalize synchronously (no processing_info). Video/GIF need
+  // polling — X's own recommended pattern is to wait check_after_secs
+  // between polls rather than hammering the endpoint.
+  let processingInfo = finalizeData.data?.processing_info
+  const deadline = Date.now() + TWITTER_PROCESSING_TIMEOUT_MS
+  while (processingInfo && processingInfo.state !== 'succeeded') {
+    if (processingInfo.state === 'failed') {
+      throw new Error(processingInfo.error?.message ?? 'Twitter failed to process the media')
+    }
+    if (Date.now() > deadline) throw new Error('Timed out waiting for Twitter to process the media')
+    await new Promise(r => setTimeout(r, (processingInfo.check_after_secs ?? 3) * 1000))
+    const statusData = await call({ command: 'STATUS', media_id: mediaId })
+    processingInfo = statusData.data?.processing_info
+  }
+
+  return mediaId
+}
+
 // ── Twitter v2 API ────────────────────────────────────────────────────────
 async function publishTwitter(
   token:     string,
@@ -283,12 +362,12 @@ async function publishTwitter(
 
     const body: Record<string, unknown> = { text: tweetText }
 
-    // Media upload (if any) — Twitter requires separate media upload step
     if (mediaUrls.length) {
-      // Note: Full media upload implementation requires multipart upload to
-      // https://upload.twitter.com/1.1/media/upload.json (v1.1 endpoint)
-      // For now we note it's needed
-      console.warn('[Twitter] Media upload requires v1.1 endpoint — skipping for now')
+      // X allows up to 4 images OR exactly 1 video/GIF per tweet.
+      const isVideo = isVideoUrl(mediaUrls[0])
+      const toUpload = isVideo ? mediaUrls.slice(0, 1) : mediaUrls.slice(0, 4)
+      const mediaIds = await Promise.all(toUpload.map(url => uploadTwitterMedia(token, url)))
+      body.media = { media_ids: mediaIds }
     }
 
     const res = await fetch('https://api.twitter.com/2/tweets', {

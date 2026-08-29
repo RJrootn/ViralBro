@@ -34,6 +34,13 @@ const SCOPES = [
   'tweet.write',
   'users.read',
   'offline.access',
+  // Required for the v2 chunked media upload endpoint (see
+  // uploadTwitterMedia in src/lib/social/publisher.ts) — without this,
+  // POST /2/media/upload returns 403 even though tweet.write alone is
+  // enough to post text-only tweets. Accounts connected before this scope
+  // was added won't have it on their existing token; they need to
+  // disconnect and reconnect Twitter once for media uploads to work.
+  'media.write',
 ].join(' ')
 
 export async function GET() {
