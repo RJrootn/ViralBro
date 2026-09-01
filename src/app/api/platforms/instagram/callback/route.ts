@@ -9,6 +9,7 @@
 //  5. Save to DB (encrypted)
 
 import { NextResponse }                    from 'next/server'
+import { cookies }                         from 'next/headers'
 import { db }                              from '@/lib/db/client'
 import { parseOAuthState, encryptToken }   from '@/lib/tokens/encrypt'
 
@@ -36,7 +37,18 @@ export async function GET(req: Request) {
   }
 
   try {
-    // ── 1. Parse CSRF state ───────────────────────────────────────────────
+    // ── 1. CSRF check ────────────────────────────────────────────────────
+    // Bind this callback to the browser that started the flow, the same way
+    // twitter/callback/route.ts and linkedin/callback/route.ts already do —
+    // `state` on its own is just base64, not signed, so without this a
+    // forged state naming someone else's workspaceId would be trusted as-is.
+    const cookieStore = cookies()
+    const storedState  = cookieStore.get('instagram_oauth_state')?.value
+    if (!storedState || storedState !== state) {
+      return NextResponse.redirect(`${APP_URL}/settings?platform=instagram&error=state_mismatch`)
+    }
+    cookieStore.delete('instagram_oauth_state')
+
     const { workspaceId } = parseOAuthState(state)
     const workspace = await db.workspace.findUnique({ where: { id: workspaceId } })
     if (!workspace) throw new Error('Workspace not found')

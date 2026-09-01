@@ -6,6 +6,7 @@
 // INITIATE  (GET /api/platforms/instagram)
 // ─────────────────────────────────────────────────────────────────────────
 import { NextResponse }       from 'next/server'
+import { cookies }            from 'next/headers'
 import { requireWorkspace }   from '@/lib/auth/session'
 import { generateOAuthState } from '@/lib/tokens/encrypt'
 
@@ -39,6 +40,18 @@ export async function GET(req: Request) {
   try {
     const { workspace } = await requireWorkspace()
     const state = generateOAuthState(workspace.id)
+
+    // CSRF check: bind this state to the browser that started the flow, the
+    // same way twitter/route.ts and linkedin/route.ts already do — without
+    // this, the callback has no way to tell a legitimate redirect from Meta
+    // apart from a forged `state` pointing at someone else's workspace.
+    cookies().set('instagram_oauth_state', state, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge:   600, // 10 minutes
+      path:     '/',
+    })
 
     const url = new URL('https://www.facebook.com/v19.0/dialog/oauth')
     url.searchParams.set('client_id',     META_APP_ID)
