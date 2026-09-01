@@ -29,6 +29,7 @@ export const STATUS_COLORS: Record<string, string> = {
   SCHEDULED: '#FBBF24',
   PUBLISHING: '#60A5FA',
   PUBLISHED: '#34D399',
+  PARTIAL: '#FB923C',
   FAILED: '#F87171',
   CANCELLED: '#5A5A72',
 }
@@ -38,6 +39,7 @@ export const STATUS_LABELS: Record<string, string> = {
   SCHEDULED: 'Scheduled',
   PUBLISHING: 'Publishing',
   PUBLISHED: 'Published',
+  PARTIAL: 'Partially published',
   FAILED: 'Failed',
   CANCELLED: 'Cancelled',
 }

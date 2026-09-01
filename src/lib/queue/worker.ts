@@ -23,10 +23,9 @@ const ANALYTICS_FIRST_FETCH_DELAY_MS = 20 * 60 * 1000       // 20 minutes
 const ANALYTICS_FOLLOWUP_FETCH_DELAY_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 // ── Roll the parent Post's status up from its PostPlatform children ───────
-// PostStatus has no PARTIAL state, so: all children published -> PUBLISHED;
-// any child still in flight -> PUBLISHING; all terminal with a failure among
-// them -> FAILED. Good enough for now; revisit if partial-success needs its
-// own status later.
+// All children published -> PUBLISHED; any child still in flight ->
+// PUBLISHING; all terminal with a mix of published and failed -> PARTIAL;
+// all terminal and none published -> FAILED.
 async function recomputePostStatus(postId: string) {
   const children = await db.postPlatform.findMany({
     where: { postId },
@@ -34,17 +33,24 @@ async function recomputePostStatus(postId: string) {
   })
   if (children.length === 0) return
 
+  const anyInFlight = children.some((c) => c.status === 'PUBLISHING' || c.status === 'SCHEDULED')
+  const anyPublished = children.some((c) => c.status === 'PUBLISHED')
+
   const status = children.every((c) => c.status === 'PUBLISHED')
     ? 'PUBLISHED'
-    : children.some((c) => c.status === 'PUBLISHING' || c.status === 'SCHEDULED')
+    : anyInFlight
       ? 'PUBLISHING'
-      : 'FAILED'
+      : anyPublished
+        ? 'PARTIAL'
+        : 'FAILED'
 
   await db.post.update({
     where: { id: postId },
     data: {
       status,
-      publishedAt: status === 'PUBLISHED' ? new Date() : undefined,
+      // Set for PARTIAL too — the post did go live somewhere at this point,
+      // even if not every platform succeeded.
+      publishedAt: (status === 'PUBLISHED' || status === 'PARTIAL') ? new Date() : undefined,
     },
   })
 }

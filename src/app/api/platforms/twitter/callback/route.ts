@@ -79,6 +79,11 @@ export async function GET(req: Request) {
       ? new Date(Date.now() + expiresIn * 1000)
       : new Date(Date.now() + 2 * 60 * 60 * 1000) // 2h fallback
 
+    // Twitter's docs list `scope` as always present, but don't guarantee it
+    // for every grant — fall back to [] rather than throwing on a missing
+    // field that isn't otherwise load-bearing for the connection to work.
+    const scopes: string[] = typeof scope === 'string' ? scope.split(' ') : []
+
     // ── Fetch Twitter profile ─────────────────────────────────────────────
     const profileRes = await fetch(
       'https://api.twitter.com/2/users/me?user.fields=id,name,username,profile_image_url,public_metrics,verified',
@@ -102,7 +107,7 @@ export async function GET(req: Request) {
         accessToken:      encryptToken(accessToken),
         refreshToken:     refreshToken ? encryptToken(refreshToken) : null,
         tokenExpiresAt,
-        scopes:           (scope as string).split(' '),
+        scopes:           scopes,
       },
       update: {
         platformUserId:   profile.id,
@@ -112,7 +117,7 @@ export async function GET(req: Request) {
         accessToken:      encryptToken(accessToken),
         refreshToken:     refreshToken ? encryptToken(refreshToken) : null,
         tokenExpiresAt,
-        scopes:           (scope as string).split(' '),
+        scopes:           scopes,
         isActive:         true,
       },
     })

@@ -20,8 +20,17 @@ const bodySchema = z.object({
 })
 
 export const POST = withErrorHandler(async (req) => {
-  await requireWorkspace()
+  const { workspace } = await requireWorkspace()
   const body = bodySchema.parse(await req.json())
+
+  // The key must be one presign.ts minted for this exact workspace — without
+  // this, any signed-in caller could pass another workspace's key (keys are
+  // unguessable, but a published post's mediaUrl exposes its own key) and
+  // have the server download, reprocess, and re-host that other workspace's
+  // video on their behalf.
+  if (!body.key.startsWith(`uploads/${workspace.id}/`)) {
+    return err('Invalid media key', 403)
+  }
 
   if (!isVideoContentType(body.contentType)) {
     return ok({ publicUrl: body.publicUrl })

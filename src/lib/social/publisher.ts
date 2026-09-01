@@ -50,7 +50,7 @@ export async function publishToplatform(
   switch (platform) {
     case 'INSTAGRAM': return publishInstagram(token, account.platformUserId, fullText, mediaUrls, mediaType)
     case 'TWITTER':   return publishTwitter(token, fullText, mediaUrls)
-    case 'LINKEDIN':  return publishLinkedIn(token, account.platformUserId, fullText, mediaUrls)
+    case 'LINKEDIN':  return publishLinkedIn(token, account.platformUserId, fullText, mediaUrls, mediaType)
     default:
       return { success: false, error: `Publisher not implemented for ${platform}` }
   }
@@ -399,8 +399,24 @@ async function publishLinkedIn(
   memberId:  string,
   text:      string,
   mediaUrls: string[],
+  mediaType: PostMediaType = 'IMAGE',
 ): Promise<PublishResult> {
   try {
+    // LinkedIn images can be shared by URL (`originalUrl`, shareMediaCategory
+    // 'IMAGE'), but real video requires LinkedIn's separate Assets API
+    // (register an upload, PUT the actual video bytes, then reference the
+    // resulting asset URN) — there's no "just pass a video URL" option like
+    // Instagram/Twitter have. That upload flow isn't implemented yet, so
+    // fail clearly here instead of silently sending shareMediaCategory
+    // 'IMAGE' with a video URL, which LinkedIn would reject or mishandle
+    // with a confusing raw API error.
+    if ((mediaType === 'VIDEO' || mediaType === 'REEL') && mediaUrls.length) {
+      return {
+        success: false,
+        error:   'LinkedIn video posting is not supported yet — LinkedIn requires a separate video upload flow. Please post to LinkedIn without video for now.',
+      }
+    }
+
     const authorUrn = `urn:li:person:${memberId}`
 
     const body: Record<string, unknown> = {

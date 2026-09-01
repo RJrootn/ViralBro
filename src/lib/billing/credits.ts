@@ -44,15 +44,31 @@ export async function ensureFreshCredits(userId: string, plan: Plan): Promise<nu
   const cap = PLAN_LIMITS[plan]?.aiCredits ?? PLAN_LIMITS.FREE.aiCredits
   const nextReset = addMonths(now, 1)
 
-  await db.$transaction([
-    db.user.update({
-      where: { id: userId },
-      data: { aiCreditBalance: cap, creditsResetAt: nextReset },
-    }),
-    db.aiCredit.create({
-      data: { userId, amount: cap - user.aiCreditBalance, reason: 'monthly_reset', balance: cap },
-    }),
-  ])
+  // Claim the reset atomically, the same way applyCapturedPayment claims a
+  // payment: only one of two concurrent callers (e.g. an AI-generate call
+  // racing the billing/usage sidebar fetch, both landing right as the cycle
+  // rolls over) wins the conditional update and creates the ledger row. A
+  // plain read-then-write here would let both pass the check above before
+  // either writes, creating two duplicate 'monthly_reset' rows.
+  const claimed = await db.user.updateMany({
+    where: {
+      id: userId,
+      OR: [{ creditsResetAt: null }, { creditsResetAt: { lte: now } }],
+    },
+    data: { aiCreditBalance: cap, creditsResetAt: nextReset },
+  })
+
+  if (claimed.count === 0) {
+    // Lost the race — another request already reset it. Re-read rather than
+    // trusting the stale `cap` value, in case that other reset used a
+    // different plan cap than this call would have.
+    const fresh = await db.user.findUnique({ where: { id: userId }, select: { aiCreditBalance: true } })
+    return fresh?.aiCreditBalance ?? cap
+  }
+
+  await db.aiCredit.create({
+    data: { userId, amount: cap - user.aiCreditBalance, reason: 'monthly_reset', balance: cap },
+  })
 
   return cap
 }

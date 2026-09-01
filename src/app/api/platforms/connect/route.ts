@@ -6,6 +6,7 @@ import { z }                     from 'zod'
 import { withErrorHandler, ok }  from '@/lib/api'
 import { requireWorkspace }      from '@/lib/auth/session'
 import { db }                    from '@/lib/db/client'
+import { encryptToken }          from '@/lib/tokens/encrypt'
 import type { SocialPlatform }   from '@prisma/client'
 
 const schema = z.object({
@@ -38,8 +39,8 @@ export const POST = withErrorHandler(async (req) => {
       platformUsername: body.platformUsername,
       displayName:      body.displayName,
       avatarUrl:        body.avatarUrl,
-      accessToken:      body.accessToken,
-      refreshToken:     body.refreshToken,
+      accessToken:      encryptToken(body.accessToken),
+      refreshToken:     body.refreshToken ? encryptToken(body.refreshToken) : null,
       tokenExpiresAt:   body.tokenExpiresAt ? new Date(body.tokenExpiresAt) : null,
       scopes:           body.scopes,
     },
@@ -48,8 +49,8 @@ export const POST = withErrorHandler(async (req) => {
       platformUsername: body.platformUsername,
       displayName:      body.displayName,
       avatarUrl:        body.avatarUrl,
-      accessToken:      body.accessToken,
-      refreshToken:     body.refreshToken,
+      accessToken:      encryptToken(body.accessToken),
+      refreshToken:     body.refreshToken ? encryptToken(body.refreshToken) : null,
       tokenExpiresAt:   body.tokenExpiresAt ? new Date(body.tokenExpiresAt) : null,
       scopes:           body.scopes,
       isActive:         true,

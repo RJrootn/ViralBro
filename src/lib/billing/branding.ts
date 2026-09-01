@@ -29,6 +29,7 @@ const PLATFORM_MAX_LENGTH: Partial<Record<string, number>> = {
   TWITTER: 280,
   INSTAGRAM: 2200,
   WHATSAPP: 1000,
+  LINKEDIN: 3000,
 }
 
 // Appends the tag if there's room; if the post is long enough that adding it

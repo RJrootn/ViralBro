@@ -60,6 +60,7 @@ const FILTERS = [
   { key: 'DRAFT', label: 'Draft' },
   { key: 'SCHEDULED', label: 'Scheduled' },
   { key: 'PUBLISHED', label: 'Published' },
+  { key: 'PARTIAL', label: 'Partial' },
   { key: 'FAILED', label: 'Failed' },
 ] as const
 
