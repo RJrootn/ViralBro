@@ -7,13 +7,14 @@
 // ADMIN_EMAILS must be set explicitly (e.g. in Netlify) — see .env.example.
 
 import { requireSession } from './session'
+import { adminEmailList } from './adminEmails'
 
 function adminEmails(): string[] {
-  const raw = process.env.ADMIN_EMAILS
-  if (!raw) {
+  const list = adminEmailList()
+  if (list.length === 0) {
     throw new Error('ADMIN_EMAILS environment variable is not set')
   }
-  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  return list
 }
 
 /** Returns the session if the signed-in user is an admin — throws 'FORBIDDEN' otherwise. */

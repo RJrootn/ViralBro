@@ -3,6 +3,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter'
 import GoogleProvider from 'next-auth/providers/google'
 import { addMonths } from 'date-fns'
 import { db } from '@/lib/db/client'
+import { adminEmailList } from './adminEmails'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db) as any,
@@ -22,6 +23,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = user.id
         session.user.plan = (user as any).plan ?? 'FREE'
+        session.user.isAdmin = adminEmailList().includes((user.email ?? '').toLowerCase())
       }
       return session
     },
@@ -59,6 +61,6 @@ export const authOptions: NextAuthOptions = {
 
 declare module 'next-auth' {
   interface Session {
-    user: { id: string; name: string | null; email: string | null; image: string | null; plan: string }
+    user: { id: string; name: string | null; email: string | null; image: string | null; plan: string; isAdmin: boolean }
   }
 }

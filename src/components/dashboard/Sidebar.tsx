@@ -119,10 +119,10 @@ export default function Sidebar() {
         <SbItem icon="💬" label="Comments" active={active === 'comments'} onClick={() => nav('comments')} />
         <SbItem icon="🔔" label="Notifications" active={active === 'notifications'} onClick={() => nav('notifications')} />
         <SbItem icon="⚙️" label="Settings" active={active === 'settings'} onClick={() => nav('settings')} />
-        {/* Client-side check is just to decide whether to show the link —
-            /admin and /api/admin/stats both re-check the real allowlist
-            server-side, so this hardcoded email grants no actual access. */}
-        {session?.user?.email?.toLowerCase() === 'rj@rootn.ai' && (
+        {/* isAdmin is just a display hint from the session — /admin and
+            /api/admin/stats both re-check the real ADMIN_EMAILS allowlist
+            server-side, so a stale or tampered value here grants no access. */}
+        {session?.user?.isAdmin && (
           <SbItem icon="📊" label="Business Dashboard" active={pathname?.startsWith('/admin')} onClick={() => router.push('/admin')} />
         )}
       </div>
